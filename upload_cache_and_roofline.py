@@ -35,7 +35,9 @@ def extract_from_ncu_file(
     if extract_mem_flag:
         func_and_metric_csvs.append(
             consolidate_ncu_details(
-                extract_ncu_values_from_details(load_ncu_report(file_path, "details")),
+                extract_ncu_values_from_details(
+                    load_ncu_report(file_path, "details")
+                ),
                 classify_het_kernel_func,
             )
         )
@@ -97,28 +99,6 @@ def extract_from_ncu_folder(
     # return [item for sublist in raw_csvs for item in sublist]
 
 
-def extract_memory_from_ncu_folder(
-    path: str, classify_het_kernel_func: Callable[[str], str]
-) -> "list[list[str]]":
-    return extract_from_ncu_folder(
-        path,
-        extract_mem_flag=True,
-        extract_roofline_flag=False,
-        classify_het_kernel_func=classify_het_kernel_func,
-    )
-
-
-def extract_roofline_from_ncu_folder(
-    path: str, classify_het_kernel_func: Callable[[str], str]
-) -> "list[list[str]]":
-    return extract_from_ncu_folder(
-        path,
-        extract_mem_flag=False,
-        extract_roofline_flag=True,
-        classify_het_kernel_func=classify_het_kernel_func,
-    )
-
-
 def check_metric_units_all_identical_from_ncu_folder(path) -> bool:
     """
     check_metric_units_all_identical_from_ncu_folder("misc/artifacts/ncu_breakdown_202307180518") returns False after printing
@@ -142,6 +122,8 @@ def check_metric_units_all_identical_from_ncu_folder(path) -> bool:
         if len(metric_units[metric]) != 1:
             if len(metric_units[metric]) == 2 and "%" in metric_units[metric]:
                 continue
-            print(f"Metric {metric} has different units: {metric_units[metric]}")
+            print(
+                f"Metric {metric} has different units: {metric_units[metric]}"
+            )
             return False
     return True
