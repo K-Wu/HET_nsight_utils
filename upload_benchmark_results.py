@@ -208,6 +208,18 @@ def ask_subdirectory(dirname, prefix, results_relative_dir) -> str:
     raise RuntimeError("Unreachable")
 
 
+def ask_file(dirname, prefix, results_relative_dir) -> str:
+    while 1:
+        result = ask_subdirectory_or_file(
+            dirname, prefix, results_relative_dir
+        )
+        if os.path.isfile(result):
+            return result
+        else:
+            print(result, "is not a file. try again")
+    raise RuntimeError("Unreachable")
+
+
 def open_worksheet(target_sheet_url: str, target_gid: str):
     if target_gid != "0":
         raise NotImplementedError(
