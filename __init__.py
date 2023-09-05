@@ -10,7 +10,7 @@ from .upload_benchmark_results import (
     count_cols,
     count_rows,
     get_pretty_hostname,
-    find_latest_subdirectory,
+    find_latest_subdirectory_or_file,
     NameCanonicalizer,
 )
 from .classify_het_kernels import (
@@ -48,7 +48,7 @@ __all__ = [
     "count_cols",
     "count_rows",
     "get_pretty_hostname",
-    "find_latest_subdirectory",
+    "find_latest_subdirectory_or_file",
     "NameCanonicalizer",
     "is_ctags_installed",
     "classify_fw_bw_kernel",

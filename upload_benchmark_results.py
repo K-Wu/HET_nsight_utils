@@ -53,7 +53,9 @@ class ConfigCanonicalizer:
         input_fmt: str,
         prettifier_rule: "dict[str,str]" = {
             "multiply_among_weights_first_flag": "Fusion",
-            "compact_as_of_node_flag--compact_direct_indexing_flag": "CompactDirect",
+            "compact_as_of_node_flag--compact_direct_indexing_flag": (
+                "CompactDirect"
+            ),
             "compact_as_of_node_flag": "Compact",
             "": "None",  # Replace null values to allow joining in Tableau
         },
@@ -76,7 +78,9 @@ class ConfigCanonicalizer:
         ax_in_idx = input_fmts.index("ax_in")
         ax_out_idx = input_fmts.index("ax_out")
         ax_head_idx = input_fmts.index("ax_head")
-        return f"{config[ax_in_idx]}.{config[ax_out_idx]}.{config[ax_head_idx]}"
+        return (
+            f"{config[ax_in_idx]}.{config[ax_out_idx]}.{config[ax_head_idx]}"
+        )
 
     # Define your own get_configs_other_than_dimensions here in subclasses
     @classmethod
@@ -135,7 +139,13 @@ def get_pretty_hostname() -> str:
     hostname = socket.gethostname()
     hostname_parts = hostname.split("-")
     if len(hostname_parts) > 2:
-        return hostname_parts[0] + "-" + hostname_parts[1] + "-" + hostname_parts[2]
+        return (
+            hostname_parts[0]
+            + "-"
+            + hostname_parts[1]
+            + "-"
+            + hostname_parts[2]
+        )
     else:
         return hostname
 
@@ -148,21 +158,21 @@ def count_cols(csv_rows: "list[list[Any]]") -> int:
     return max([len(row) for row in csv_rows])
 
 
-def find_latest_subdirectory(root, prefix) -> str:
+def find_latest_subdirectory_or_file(dirname, prefix) -> str:
     candidates = []
-    for subdir in os.listdir(root):
-        if subdir.startswith(prefix):
-            candidates.append(subdir)
-    return os.path.join(root, max(candidates))
+    for subdir_or_file in os.listdir(dirname):
+        if subdir_or_file.startswith(prefix):
+            candidates.append(subdir_or_file)
+    return os.path.join(dirname, max(candidates))
 
 
-def ask_subdirectory_or_file(root, prefix, results_relative_dir) -> str:
+def ask_subdirectory_or_file(dirname, prefix, results_relative_dir) -> str:
     """
     Show latest directory and request user input
     If user input is empty then choose the latest directory
     otherwise, choose the user input
     """
-    candidate = find_latest_subdirectory(root, prefix)
+    candidate = find_latest_subdirectory_or_file(dirname, prefix)
     print(
         "With prefix ",
         prefix,
@@ -170,22 +180,27 @@ def ask_subdirectory_or_file(root, prefix, results_relative_dir) -> str:
         os.path.basename(candidate),
     )
     user_input = input(
-        "Press enter to use it, or please input the directory you want to upload:"
+        "Press enter to use it, or please input the directory you want to"
+        " upload:"
     )
     if len(user_input) == 0:
         result = candidate
     else:
-        if user_input.startswith("///"):  # user input is a relative path to het root
+        if user_input.startswith(
+            "///"
+        ):  # user input is a relative path to het root
             assert user_input[3:].startswith(results_relative_dir)
             user_input = os.path.relpath(user_input[3:], results_relative_dir)
-        result = os.path.join(root, user_input)
+        result = os.path.join(dirname, user_input)
     assert os.path.exists(result), f"{result} does not exist"
     return result
 
 
-def ask_subdirectory(root, prefix, results_relative_dir) -> str:
+def ask_subdirectory(dirname, prefix, results_relative_dir) -> str:
     while 1:
-        result = ask_subdirectory_or_file(root, prefix, results_relative_dir)
+        result = ask_subdirectory_or_file(
+            dirname, prefix, results_relative_dir
+        )
         if os.path.isdir(result):
             return result
         else:
@@ -195,7 +210,9 @@ def ask_subdirectory(root, prefix, results_relative_dir) -> str:
 
 def open_worksheet(target_sheet_url: str, target_gid: str):
     if target_gid != "0":
-        raise NotImplementedError("To avoid data loss, only gid=0 is supported for now")
+        raise NotImplementedError(
+            "To avoid data loss, only gid=0 is supported for now"
+        )
     gc = gspread.service_account()
     sh = gc.open_by_url(target_sheet_url)
     sheet_data = sh.fetch_sheet_metadata()
@@ -211,16 +228,22 @@ def open_worksheet(target_sheet_url: str, target_gid: str):
     return ws
 
 
-def create_worksheet(target_sheet_url: str, title: str, retry=False) -> Worksheet:
+def create_worksheet(
+    target_sheet_url: str, title: str, retry=False
+) -> Worksheet:
     gc = gspread.service_account()
     sh = gc.open_by_url(target_sheet_url)
     title_suffix = ""
     # when retry is True, we will ask user to specify a suffix if the title already exists
     if retry:
         while True:
-            if (title + title_suffix)[:100] in [ws.title for ws in sh.worksheets()]:
+            if (title + title_suffix)[:100] in [
+                ws.title for ws in sh.worksheets()
+            ]:
                 # ask user to specify a suffix
-                title_suffix = input("title already exists, please specify a suffix:")
+                title_suffix = input(
+                    "title already exists, please specify a suffix:"
+                )
             else:
                 break
 
@@ -269,7 +292,9 @@ def update_gspread(entries, ws: Worksheet, cell_range=None) -> None:
         num_rows = len(entries)
         num_cols = max([len(row) for row in entries])
         cell_range = get_cell_range_from_A1(num_rows, num_cols)
-    ws.format(cell_range, {"numberFormat": {"type": "NUMBER", "pattern": "0.0000"}})
+    ws.format(
+        cell_range, {"numberFormat": {"type": "NUMBER", "pattern": "0.0000"}}
+    )
     ws.update(cell_range, try_best_to_numeric(entries))
     # ws.update_title("[GID0]TestTitle")
 
