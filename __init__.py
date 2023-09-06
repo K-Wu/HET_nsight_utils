@@ -2,6 +2,7 @@ from .run_once import run_once
 from .detect_pwd import get_git_root_path, get_env_name_from_setup
 from .upload_benchmark_results import (
     ConfigCanonicalizer,
+    generate_filename,
     ask_file,
     ask_subdirectory,
     ask_subdirectory_or_file,
@@ -41,6 +42,7 @@ __all__ = [
     "get_git_root_path",
     "get_env_name_from_setup",
     "ConfigCanonicalizer",
+    "generate_filename",
     "ask_file",
     "ask_subdirectory",
     "ask_subdirectory_or_file",

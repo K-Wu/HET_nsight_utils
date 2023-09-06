@@ -158,30 +158,41 @@ def count_cols(csv_rows: "list[list[Any]]") -> int:
     return max([len(row) for row in csv_rows])
 
 
-def find_latest_subdirectory_or_file(dirname, prefix) -> str:
-    candidates = []
+def find_latest_subdirectory_or_file(
+    dirname: str, prefix: str, suffix: str = ""
+) -> str:
+    candidates: list[str] = []
     for subdir_or_file in os.listdir(dirname):
-        if subdir_or_file.startswith(prefix):
+        if subdir_or_file.startswith(prefix) and subdir_or_file.endswith(
+            suffix
+        ):
             candidates.append(subdir_or_file)
     return os.path.join(dirname, max(candidates))
 
 
-def ask_subdirectory_or_file(dirname, prefix, results_relative_dir) -> str:
+def ask_subdirectory_or_file(
+    dirname, prefix, results_relative_dir, suffix=""
+) -> str:
     """
     Show latest directory and request user input
     If user input is empty then choose the latest directory
     otherwise, choose the user input
     """
-    candidate = find_latest_subdirectory_or_file(dirname, prefix)
+    candidate = find_latest_subdirectory_or_file(dirname, prefix, suffix)
     print(
         "With prefix ",
         prefix,
-        ", the latest directory is ",
+        " and suffix ",
+        suffix,
+        (
+            ", the latest directory/file (depending on which type you"
+            " request) is "
+        ),
         os.path.basename(candidate),
     )
     user_input = input(
-        "Press enter to use it, or please input the directory you want to"
-        " upload:"
+        "Press enter to use it, or please input the directory (without prefix"
+        " or suffix) you want to use (e.g, upload):"
     )
     if len(user_input) == 0:
         result = candidate
@@ -196,7 +207,9 @@ def ask_subdirectory_or_file(dirname, prefix, results_relative_dir) -> str:
     return result
 
 
-def ask_subdirectory(dirname, prefix, results_relative_dir) -> str:
+def ask_subdirectory(
+    dirname: str, prefix: str, results_relative_dir: str
+) -> str:
     while 1:
         result = ask_subdirectory_or_file(
             dirname, prefix, results_relative_dir
@@ -208,16 +221,28 @@ def ask_subdirectory(dirname, prefix, results_relative_dir) -> str:
     raise RuntimeError("Unreachable")
 
 
-def ask_file(dirname, prefix, results_relative_dir) -> str:
+def ask_file(dirname: str, prefix: str, suffix: str = "") -> str:
     while 1:
-        result = ask_subdirectory_or_file(
-            dirname, prefix, results_relative_dir
-        )
+        result = ask_subdirectory_or_file(dirname, prefix, "", suffix)
         if os.path.isfile(result):
             return result
         else:
             print(result, "is not a file. try again")
     raise RuntimeError("Unreachable")
+
+
+def generate_filename(
+    dirname: str, prefix: str, suffix: str, time_format="%Y%m%d%H%M"
+) -> str:
+    """
+    Generate a filename with prefix and timestamp
+    """
+    import time
+
+    ret: str = prefix + time.strftime(time_format, time.localtime()) + suffix
+    if os.path.exists(os.path.join(dirname, ret)):
+        print("WARNING: ", ret, "already exists")
+    return ret
 
 
 def open_worksheet(target_sheet_url: str, target_gid: str):
