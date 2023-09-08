@@ -659,7 +659,6 @@ def calculate_roofline_for_ncu_raw_csvs(
     )
 
 
-# TODO: right now there are multiple headers, one for each raw_csv. merge them into one
 def combine_ncu_raw_csvs(
     num_frozen_columns: int,
     raw_csv_list: "list[list[list[str]]]",
@@ -668,6 +667,7 @@ def combine_ncu_raw_csvs(
     Combine multiple raw csvs from ncu into one
     the first few columns won't be touched, i.e., model, dataset, ID, pretty name, kernel name
     the number of frozen columns is specified by num_frozen_columns
+    Headers will be merged into one.
     """
     assert len(raw_csv_list) > 0
     kernel_instances_metrics: dict[

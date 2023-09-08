@@ -10,14 +10,6 @@ from abc import abstractmethod
 import os
 import socket
 
-# TODO: find and extract the following pattern from the result folder
-#
-# "Mean forward time: {:4f} ms"
-# "Mean backward time: {:4f} ms"
-# "Mean training time: {:4f} ms"
-# OUTPUT_DIR="misc/artifacts/benchmark_all_`date +%Y%m%d%H%M`"
-#
-
 
 class ConfigCanonicalizer:
     @classmethod
