@@ -34,6 +34,11 @@ from .upload_cache_and_roofline import (
     extract_from_ncu_folder,
     extract_from_ncu_file,
 )
+from .print_machine_info import (
+    print_system_info,
+    print_python_env_info,
+    print_conda_envs_info,
+)
 
 # From https://stackoverflow.com/questions/59167405/flake8-ignore-only-f401-rule-in-entire-file
 __all__ = [
@@ -66,4 +71,7 @@ __all__ = [
     "prettify_name_from_func_signature",
     "extract_from_ncu_folder",
     "extract_from_ncu_file",
+    "print_system_info",
+    "print_python_env_info",
+    "print_conda_envs_info",
 ]  # this suppresses the warning F401
