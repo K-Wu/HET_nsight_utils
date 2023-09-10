@@ -13,7 +13,39 @@ def assert_git_exists() -> None:
     try:
         subprocess.check_output(["git", "--version"])
     except Exception:  # any error means git is not installed
-        raise OSError("Git is not installed. Please install git and try again.")
+        raise OSError(
+            "Git is not installed. Please install git and try again."
+        )
+
+
+@lru_cache(maxsize=None)
+@run_once
+def assert_gh_exists():
+    """Check if gh is installed. If not, use `conda install gh --channel conda-forge` or refer to https://github.com/cli/cli install github-cli."""
+    try:
+        subprocess.check_output(["gh", "--version"])
+    except Exception:  # any error means git is not installed
+        raise OSError(
+            "Github cli is not installed. Please install gh and try again."
+        )
+
+
+@lru_cache(maxsize=None)
+@run_once
+def get_spreadsheet_url() -> str:
+    """Get the SPREADSHEET_URL github repo variable by `gh variable list |grep SPREADSHEET_URL`."""
+    assert_git_exists()
+    assert_gh_exists()
+    try:
+        out = subprocess.check_output(["gh", "variable", "list"]).decode(
+            "utf-8"
+        )
+    except Exception:
+        raise OSError("Failed to run `gh variable list`.")
+    for line in out.splitlines():
+        if "SPREADSHEET_URL" in line:
+            return line.split()[1]
+    raise OSError("Failed to find SPREADSHEET_URL in `gh variable list`.")
 
 
 def get_git_root_path() -> str:
@@ -36,5 +68,6 @@ def get_env_name_from_setup(het_root_path: str) -> str:
             if "conda activate" in line:
                 return line.split(" ")[-1].strip()
     raise ValueError(
-        "Fatal! Cannot find conda activate command in setup_dev_env.sh. Please check the file."
+        "Fatal! Cannot find conda activate command in setup_dev_env.sh. Please"
+        " check the file."
     )

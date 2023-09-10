@@ -2,7 +2,7 @@ import os
 import re
 from .run_once import run_once
 from functools import lru_cache
-from typing import Tuple
+from typing import Tuple, Union
 from .classify_het_kernels import classify_fw_bw_kernel
 from .upload_benchmark_results import (
     create_worksheet,
@@ -14,7 +14,9 @@ import traceback
 from typing import Callable
 
 
-def simple_combine_nsys_csvs(raw_csvs: list[list[list[str]]]) -> "list[list[str]]":
+def simple_combine_nsys_csvs(
+    raw_csvs: list[list[list[str]]],
+) -> "list[list[str]]":
     """
     This function asserts headers are the same for all csvs, and keep only one header and merge the bodies of all csvs.
     """
@@ -26,7 +28,9 @@ def simple_combine_nsys_csvs(raw_csvs: list[list[list[str]]]) -> "list[list[str]
 
 
 def _extract_info_from_file(
-    file_path: str, suffix: str, canonicalize_to_str: Callable[[str], list[str]]
+    file_path: str,
+    suffix: str,
+    canonicalize_to_str: Callable[[str], list[str]],
 ) -> "list[str]":
     file_path = os.path.basename(file_path)
     return canonicalize_to_str(file_path[: file_path.rfind(suffix)])
@@ -60,7 +64,9 @@ def upload_nsys_report(
                 nsys_report_name,
                 classify_het_kernel_func,
             )
-            info_from_filename: list[str] = extract_info_from_nsys(filename, filename_fmt)
+            info_from_filename: list[str] = extract_info_from_nsys(
+                filename, filename_fmt
+            )
             curr_csv = [info_from_filename + row for row in curr_csv]
             # For info from filename, Set INFO[idx] as the column names in header row
             for idx_col in range(len(info_from_filename)):
@@ -72,7 +78,9 @@ def upload_nsys_report(
     csv_rows = simple_combine_nsys_csvs(raw_csvs)
     print(csv_rows)
     # Create worksheet
-    worksheet_title = f"[{get_pretty_hostname()}]{subdir_path.split('/')[-1]}"[:100]
+    worksheet_title = f"[{get_pretty_hostname()}]{subdir_path.split('/')[-1]}"[
+        :100
+    ]
     try:
         worksheet = create_worksheet(spreadsheet_url, worksheet_title)
     except Exception as e:
@@ -150,7 +158,9 @@ def _extract_csv_from_nsys_cli_output(
 
 
 def load_nsys_report(
-    filename: str, report_name: str, classify_het_kernel_func: Callable[[str], str]
+    filename: str,
+    report_name: str,
+    classify_het_kernel_func: Callable[[str], str],
 ) -> "list[list[str]]":
     """Load a report from a nsys report file. The output, list[list[str]] is each cell in each row in the csv format output."""
     assert nsys_exists(), "nsys is not installed"
@@ -158,7 +168,9 @@ def load_nsys_report(
     nsys_cli_output: str = os.popen(
         f"nsys stats -f csv -r {report_name} {filename}"
     ).read()
-    return _extract_csv_from_nsys_cli_output(nsys_cli_output, classify_het_kernel_func)
+    return _extract_csv_from_nsys_cli_output(
+        nsys_cli_output, classify_het_kernel_func
+    )
 
 
 NCU_DETAILS_COLUMN_IDX: "dict[str, int]" = {
@@ -185,9 +197,10 @@ def get_raw_column_idx_and_convertion(
     new_units: list[str] = [*units]
     for column in columns:
         raw_column_idx[column] = header.index(column)
-        assert (
-            column not in header[raw_column_idx[column] + 1 :]
-        ), "no raw metric should be associated with two different units in the same profiling file"
+        assert column not in header[raw_column_idx[column] + 1 :], (
+            "no raw metric should be associated with two different units in"
+            " the same profiling file"
+        )
         if (column, units[raw_column_idx[column]]) in metric_unit_conversion:
             (
                 new_unit,
@@ -200,7 +213,7 @@ def get_raw_column_idx_and_convertion(
 
 
 def extract_ncu_values_from_raws(
-    nsys_details_csv: "list[list[str]]",
+    ncu_details_csv: "list[list[str]]",
     # It seems arithmetic intensity is AchievedWorkPerSecond/BytesPerSecond
     # It is safe to duplicate entries because raw_metrics is a set
     raw_metrics: "set[str]" = {
@@ -234,10 +247,12 @@ def extract_ncu_values_from_raws(
     },
 ) -> "list[list[str]]":
     # TODO: use to kernel_instances_metrics and to ncu_raw_csv
-    header: list[str] = nsys_details_csv[0]
-    units: list[str] = nsys_details_csv[1]
+    header: list[str] = ncu_details_csv[0]
+    units: list[str] = ncu_details_csv[1]
     assert header[0] == "ID", f"header[0] = {header[0]} != ID"
-    assert header[4] == "Kernel Name", f"header[4] = {header[4]} != Kernel Name"
+    assert (
+        header[4] == "Kernel Name"
+    ), f"header[4] = {header[4]} != Kernel Name"
     NCU_DETAILS_COLUMN_IDX: dict[str, int]
     exponential_to_apply: dict[str, int]
     new_units: list[str]
@@ -254,11 +269,15 @@ def extract_ncu_values_from_raws(
     # for idx in NCU_DETAILS_COLUMN_IDX.values():
     #    print(f"header[{idx}] = {header[idx]}, units[{idx}] = {units[idx]}")
     results: list[list[str]] = [
-        ["ID", "Pretty Name", "Kernel Name"] + [key for key in NCU_DETAILS_COLUMN_IDX],
+        ["ID", "Pretty Name", "Kernel Name"]
+        + [key for key in NCU_DETAILS_COLUMN_IDX],
         ["", "", ""]
-        + [new_units[NCU_DETAILS_COLUMN_IDX[key]] for key in NCU_DETAILS_COLUMN_IDX],
+        + [
+            new_units[NCU_DETAILS_COLUMN_IDX[key]]
+            for key in NCU_DETAILS_COLUMN_IDX
+        ],
     ]
-    for row in nsys_details_csv[2:]:  # Skip header and units
+    for row in ncu_details_csv[2:]:  # Skip header and units
         results.append(
             [
                 row[0],  # ID
@@ -343,7 +362,10 @@ def derive_rooflines(
         # terms of flops_per_cycle are always inst/cycle
         peak_flop_per_cycle: float = get_float_metric_or_zero(
             kernel_instances_metrics[kernel_identifier],
-            ("derived__sm__sass_thread_inst_executed_op_ffma_pred_on_x2", "inst"),
+            (
+                "derived__sm__sass_thread_inst_executed_op_ffma_pred_on_x2",
+                "inst",
+            ),
         )
         flop_per_cycle: float = (
             get_float_metric_or_zero(
@@ -372,9 +394,9 @@ def derive_rooflines(
             kernel_instances_metrics[kernel_identifier],
             ("smsp__cycles_elapsed.avg.per_second", "cycle/nsecond"),
         )
-        kernel_instances_metrics[kernel_identifier][("Achieved Work", "GFLOPs")] = str(
-            flop_per_cycle * sm_cycle_per_nano_second
-        )
+        kernel_instances_metrics[kernel_identifier][
+            ("Achieved Work", "GFLOPs")
+        ] = str(flop_per_cycle * sm_cycle_per_nano_second)
         # print(str(
         #     flop_per_cycle * sm_cycle_per_nano_second
         # ))
@@ -463,7 +485,8 @@ def derive_kernel_forward_or_backward(
 
 
 def consolidate_ncu_details(
-    metric_per_row: "list[list[str]]", classify_het_kernel_func: Callable[[str], str]
+    metric_per_row: "list[list[str]]",
+    classify_het_kernel_func: Union[Callable[[str], str], None],
 ) -> "list[list[str]]":
     """
     The original output from extract_ncu_values_from_details shows one metric in each row,
@@ -472,7 +495,9 @@ def consolidate_ncu_details(
     """
     header: list[str] = metric_per_row[0]
     name_columns: list[str] = ["ID", "Pretty Name", "Kernel Name"]
-    name_columns_idx: dict[str, int] = {key: header.index(key) for key in name_columns}
+    name_columns_idx: dict[str, int] = {
+        key: header.index(key) for key in name_columns
+    }
     metric_columns: list[str] = ["Metric Name", "Metric Unit", "Metric Value"]
     metric_columns_idx: dict[str, int] = {
         key: header.index(key) for key in metric_columns
@@ -493,7 +518,9 @@ def consolidate_ncu_details(
         assert (
             row[metric_columns_idx["Metric Name"]],
             row[metric_columns_idx["Metric Unit"]],
-        ) not in kernel_instances_metrics[kernel_identifier], f"Duplicate metric: {row}"
+        ) not in kernel_instances_metrics[
+            kernel_identifier
+        ], f"Duplicate metric: {row}"
 
         kernel_instances_metrics[kernel_identifier][
             (
@@ -509,23 +536,33 @@ def consolidate_ncu_details(
             )
         )
 
-    derive_kernel_categories(
-        kernel_instances_metrics, metrics_and_units, classify_het_kernel_func
+    if classify_het_kernel_func is not None:
+        derive_kernel_categories(
+            kernel_instances_metrics,
+            metrics_and_units,
+            classify_het_kernel_func,
+        )
+    derive_kernel_forward_or_backward(
+        kernel_instances_metrics, metrics_and_units
     )
-    derive_kernel_forward_or_backward(kernel_instances_metrics, metrics_and_units)
 
     results: list[list[str]] = [
-        name_columns + [ele[0] for ele in sorted(metrics_and_units, reverse=True)],
+        name_columns
+        + [ele[0] for ele in sorted(metrics_and_units, reverse=True)],
         [""] * len(name_columns)
         + [ele[1] for ele in sorted(metrics_and_units, reverse=True)],
     ]
     for kernel_identifier in kernel_instances_metrics:
         row = list(kernel_identifier)
         for metric, unit in sorted(metrics_and_units, reverse=True):
-            if (metric, unit) not in kernel_instances_metrics[kernel_identifier]:
+            if (metric, unit) not in kernel_instances_metrics[
+                kernel_identifier
+            ]:
                 row.append("")
             else:
-                row.append(kernel_instances_metrics[kernel_identifier][(metric, unit)])
+                row.append(
+                    kernel_instances_metrics[kernel_identifier][(metric, unit)]
+                )
         results.append(row)
     assert "Metric Name" not in results[0]
     return results
@@ -545,10 +582,14 @@ def convert_kernel_instances_metrics_to_ncu_raw_csv(
     for kernel_identifier in kernel_instances_metrics:
         row = list(kernel_identifier)
         for metric, unit in sorted(metrics_and_units, reverse=True):
-            if (metric, unit) not in kernel_instances_metrics[kernel_identifier]:
+            if (metric, unit) not in kernel_instances_metrics[
+                kernel_identifier
+            ]:
                 row.append("")
             else:
-                row.append(kernel_instances_metrics[kernel_identifier][(metric, unit)])
+                row.append(
+                    kernel_instances_metrics[kernel_identifier][(metric, unit)]
+                )
         results.append(row)
     return results
 
@@ -556,7 +597,8 @@ def convert_kernel_instances_metrics_to_ncu_raw_csv(
 def convert_ncu_raw_csvs_to_kernel_instances_metrics(
     raw_csv: "list[list[str]]",
 ) -> Tuple[
-    "set[Tuple[str, str]]", "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]"
+    "set[Tuple[str, str]]",
+    "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
 ]:
     kernel_instances_metrics: dict[
         Tuple[str, str, str], dict[Tuple[str, str], str]
@@ -565,8 +607,12 @@ def convert_ncu_raw_csvs_to_kernel_instances_metrics(
     header: list[str] = raw_csv[0]
     units: list[str] = raw_csv[1]
     assert header[0] == "ID", f"header[0] = {header[0]} != ID"
-    assert header[1] == "Pretty Name", f"header[1] = {header[1]} != Pretty Name"
-    assert header[2] == "Kernel Name", f"header[2] = {header[2]} != Kernel Name"
+    assert (
+        header[1] == "Pretty Name"
+    ), f"header[1] = {header[1]} != Pretty Name"
+    assert (
+        header[2] == "Kernel Name"
+    ), f"header[2] = {header[2]} != Kernel Name"
     for row in raw_csv[2:]:
         kernel_identifier: tuple[str, str, str] = (
             row[0],
@@ -613,7 +659,6 @@ def calculate_roofline_for_ncu_raw_csvs(
     )
 
 
-# TODO: right now there are multiple headers, one for each raw_csv. merge them into one
 def combine_ncu_raw_csvs(
     num_frozen_columns: int,
     raw_csv_list: "list[list[list[str]]]",
@@ -622,6 +667,7 @@ def combine_ncu_raw_csvs(
     Combine multiple raw csvs from ncu into one
     the first few columns won't be touched, i.e., model, dataset, ID, pretty name, kernel name
     the number of frozen columns is specified by num_frozen_columns
+    Headers will be merged into one.
     """
     assert len(raw_csv_list) > 0
     kernel_instances_metrics: dict[
@@ -631,7 +677,9 @@ def combine_ncu_raw_csvs(
     for raw_csv_ in raw_csv_list:
         header: list[str] = raw_csv_[0]
         units: list[str] = raw_csv_[1]
-        assert header[num_frozen_columns - 3] == "ID", f"header[0] = {header[0]} != ID"
+        assert (
+            header[num_frozen_columns - 3] == "ID"
+        ), f"header[0] = {header[0]} != ID"
         assert (
             header[num_frozen_columns - 2] == "Pretty Name"
         ), f"header[1] = {header[1]} != Pretty Name"
@@ -639,7 +687,9 @@ def combine_ncu_raw_csvs(
             header[num_frozen_columns - 1] == "Kernel Name"
         ), f"header[2] = {header[2]} != Kernel Name"
         for row in raw_csv_[2:]:
-            kernel_identifier: tuple[str, ...] = tuple(row[:num_frozen_columns])
+            kernel_identifier: tuple[str, ...] = tuple(
+                row[:num_frozen_columns]
+            )
             if kernel_identifier not in kernel_instances_metrics:
                 kernel_instances_metrics[kernel_identifier] = dict()
             # Metric columns start from num_frozen_columns
@@ -677,10 +727,14 @@ def combine_ncu_raw_csvs(
     for kernel_identifier in kernel_instances_metrics:
         row = list(kernel_identifier)
         for metric, unit in sorted(metrics_and_units, reverse=True):
-            if (metric, unit) not in kernel_instances_metrics[kernel_identifier]:
+            if (metric, unit) not in kernel_instances_metrics[
+                kernel_identifier
+            ]:
                 row.append("")
             else:
-                row.append(kernel_instances_metrics[kernel_identifier][(metric, unit)])
+                row.append(
+                    kernel_instances_metrics[kernel_identifier][(metric, unit)]
+                )
         results.append(row)
     return results
 
@@ -689,17 +743,26 @@ def unit_to_str(
     exponential: int, nominator: "list[str]", denominator: "list[str]"
 ) -> str:
     assert len(nominator) <= 1, f"nominator = {nominator} is not a single unit"
-    assert len(denominator) <= 1, f"denominator = {denominator} is not a single unit"
+    assert (
+        len(denominator) <= 1
+    ), f"denominator = {denominator} is not a single unit"
     nominator_str = "" if len(nominator) == 0 else nominator[0]
     if len(denominator) == 0:
         return EXPONENTIAL_TO_UNITS[exponential] + nominator_str
     else:
-        return EXPONENTIAL_TO_UNITS[exponential] + nominator_str + "/" + denominator[0]
+        return (
+            EXPONENTIAL_TO_UNITS[exponential]
+            + nominator_str
+            + "/"
+            + denominator[0]
+        )
 
 
 def mul_two_units(lhs: str, rhs: str) -> str:
     # mul_two_units("cycle/nsecond", "Kbyte/cycle") = "Tbyte/second"
-    return unit_to_str(*_mul_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs)))
+    return unit_to_str(
+        *_mul_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs))
+    )
 
 
 def canonicalize_unit(unit: str) -> Tuple[int, "list[str]", "list[str]"]:
@@ -728,7 +791,8 @@ def _simplify_unit_fraction(
 
 
 def _div_two_units(
-    lhs: Tuple[int, "list[str]", "list[str]"], rhs: Tuple[int, "list[str]", "list[str]"]
+    lhs: Tuple[int, "list[str]", "list[str]"],
+    rhs: Tuple[int, "list[str]", "list[str]"],
 ) -> Tuple[int, "list[str]", "list[str]"]:
     nominator = lhs[1] + rhs[2]
     denominator = rhs[1] + lhs[2]
@@ -737,7 +801,8 @@ def _div_two_units(
 
 
 def _mul_two_units(
-    lhs: Tuple[int, "list[str]", "list[str]"], rhs: Tuple[int, "list[str]", "list[str]"]
+    lhs: Tuple[int, "list[str]", "list[str]"],
+    rhs: Tuple[int, "list[str]", "list[str]"],
 ) -> Tuple[int, "list[str]", "list[str]"]:
     nominator = lhs[1] + rhs[1]
     denominator = rhs[2] + lhs[2]
@@ -747,11 +812,13 @@ def _mul_two_units(
 
 def div_two_units(lhs: str, rhs: str) -> str:
     # div_two_units("Tbyte", "cycle/nsecond") = "Kbyte/cycle"
-    return unit_to_str(*_div_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs)))
+    return unit_to_str(
+        *_div_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs))
+    )
 
 
 def extract_ncu_values_from_details(
-    nsys_details_csv: "list[list[str]]",
+    ncu_details_csv: "list[list[str]]",
     metric_names: "set[str]" = {
         "ID",
         "L2 Cache Throughput",
@@ -775,7 +842,7 @@ def extract_ncu_values_from_details(
         ("Duration", "nsecond"): ("usecond", -3),
     },
 ) -> "list[list[str]]":
-    header: list[str] = nsys_details_csv[0]
+    header: list[str] = ncu_details_csv[0]
 
     results: list[list[str]] = [
         [
@@ -788,16 +855,20 @@ def extract_ncu_values_from_details(
         ]
     ]
     for key in NCU_DETAILS_COLUMN_IDX:
-        assert (
-            header[NCU_DETAILS_COLUMN_IDX[key]] == key
-        ), f"header[{NCU_DETAILS_COLUMN_IDX[key]}] = {header[NCU_DETAILS_COLUMN_IDX[key]]} != {key}"
-    for row in nsys_details_csv[1:]:
+        assert header[NCU_DETAILS_COLUMN_IDX[key]] == key, (
+            f"header[{NCU_DETAILS_COLUMN_IDX[key]}] ="
+            f" {header[NCU_DETAILS_COLUMN_IDX[key]]} != {key}"
+        )
+    for row in ncu_details_csv[1:]:
         if row[NCU_DETAILS_COLUMN_IDX["Metric Name"]] in metric_names:
             curr_metric_name = row[NCU_DETAILS_COLUMN_IDX["Metric Name"]]
             curr_metric_unit = row[NCU_DETAILS_COLUMN_IDX["Metric Unit"]]
             curr_metric_value = row[NCU_DETAILS_COLUMN_IDX["Metric Value"]]
             if (curr_metric_name, curr_metric_unit) in metric_unit_conversion:
-                curr_metric_unit, exponential_to_apply = metric_unit_conversion[
+                (
+                    curr_metric_unit,
+                    exponential_to_apply,
+                ) = metric_unit_conversion[
                     (curr_metric_name, curr_metric_unit)
                 ]
                 curr_metric_value = str(
@@ -834,7 +905,10 @@ def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
                 result.append(line[1:-2].split('","'))
             continue
 
-        print('Warning:  line does not start with " or end with " skipping:', line)
+        print(
+            'Warning:  line does not start with " or end with " skipping:',
+            line,
+        )
     return result
 
 
@@ -842,10 +916,10 @@ def load_ncu_report(filename: str, page_name: str) -> "list[list[str]]":
     """Load a report from a ncu report file."""
     assert ncu_exists(), "ncu is not installed"
     assert os.path.exists(filename), f"{filename} does not exist"
-    nsys_cli_output: str = os.popen(
+    ncu_cli_output: str = os.popen(
         f"ncu --page {page_name} --csv  --import {filename}"
     ).read()
-    return load_csv_from_multiline_string(nsys_cli_output)
+    return load_csv_from_multiline_string(ncu_cli_output)
 
 
 # TODO: handle the cases where <unnamed>:: or ::<unnamed>:: causes name substring after :: to be truncated

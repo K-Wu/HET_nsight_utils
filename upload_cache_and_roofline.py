@@ -99,7 +99,7 @@ def extract_from_ncu_folder(
     # return [item for sublist in raw_csvs for item in sublist]
 
 
-def check_metric_units_all_identical_from_ncu_folder(path) -> bool:
+def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
     """
     check_metric_units_all_identical_from_ncu_folder("misc/artifacts/ncu_breakdown_202307180518") returns False after printing
     Metric derived__memory_l1_wavefronts_shared_excessive has different units: {'Kbyte', 'byte', 'Mbyte'}
