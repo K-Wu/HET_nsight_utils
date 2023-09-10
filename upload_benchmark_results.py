@@ -163,7 +163,7 @@ def find_latest_subdirectory_or_file(
 
 
 def ask_subdirectory_or_file(
-    dirname, prefix, results_relative_dir, suffix=""
+    dirname, prefix, results_dir, suffix=""
 ) -> str:
     """
     Show latest directory and request user input
@@ -192,19 +192,19 @@ def ask_subdirectory_or_file(
         if user_input.startswith(
             "///"
         ):  # user input is a relative path to het root
-            assert user_input[3:].startswith(results_relative_dir)
-            user_input = os.path.relpath(user_input[3:], results_relative_dir)
+            assert user_input[3:].startswith(results_dir)
+            user_input = os.path.relpath(user_input[3:], results_dir)
         result = os.path.join(dirname, user_input)
     assert os.path.exists(result), f"{result} does not exist"
     return result
 
 
 def ask_subdirectory(
-    dirname: str, prefix: str, results_relative_dir: str
+    dirname: str, prefix: str, results_dir: str
 ) -> str:
     while 1:
         result = ask_subdirectory_or_file(
-            dirname, prefix, results_relative_dir
+            dirname, prefix, results_dir
         )
         if os.path.isdir(result):
             return result
