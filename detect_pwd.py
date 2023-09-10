@@ -4,7 +4,7 @@ import subprocess
 import os
 from functools import lru_cache
 from .run_once import run_once
-
+import datetime
 
 @lru_cache(maxsize=None)
 @run_once
@@ -71,3 +71,10 @@ def get_env_name_from_setup(het_root_path: str) -> str:
         "Fatal! Cannot find conda activate command in setup_dev_env.sh. Please"
         " check the file."
     )
+
+
+def create_new_results_dir(prefix: str, results_dir: str) -> str:
+    curr_time = datetime.datetime.now().strftime("%Y%m%d%H%M")
+    new_dir = os.path.join(results_dir, prefix + curr_time)
+    os.makedirs(new_dir)
+    return new_dir
