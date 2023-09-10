@@ -59,9 +59,9 @@ def get_git_root_path() -> str:
 
 
 def get_env_name_from_setup(het_root_path: str) -> str:
-    # read hetero_edgesoftmax/script/setup_dev_env.sh and get the conda env name
+    # read hrt/script/setup_dev_env.sh and get the conda env name
     setup_script_path = os.path.join(
-        het_root_path, "hetero_edgesoftmax", "script", "setup_dev_env.sh"
+        het_root_path, "hrt", "script", "setup_dev_env.sh"
     )
     with open(setup_script_path, "r") as f:
         for line in f:
