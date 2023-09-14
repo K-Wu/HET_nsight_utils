@@ -151,43 +151,79 @@ def count_cols(csv_rows: "list[list[Any]]") -> int:
 
 
 def find_latest_subdirectory_or_file(
-    dirname: str, prefix: str, suffix: str = ""
-) -> str:
+    dirname: str,
+    prefix: str,
+    suffix: str = "",
+    file_only: bool = False,
+    dir_only: bool = False,
+) -> Union[str, None]:
+    assert not (file_only and dir_only)
     candidates: list[str] = []
     for subdir_or_file in os.listdir(dirname):
         if subdir_or_file.startswith(prefix) and subdir_or_file.endswith(
             suffix
         ):
+            is_file = os.path.isfile(os.path.join(dirname, subdir_or_file))
+            is_dir = os.path.isdir(os.path.join(dirname, subdir_or_file))
+            if file_only and not is_file:
+                continue
+            if dir_only and not is_dir:
+                continue
             candidates.append(subdir_or_file)
+    if len(candidates) == 0:
+        return None
     return os.path.join(dirname, max(candidates))
 
 
 def ask_subdirectory_or_file(
-    dirname, prefix, results_dir, suffix=""
+    dirname,
+    prefix,
+    results_dir,
+    suffix="",
+    file_only: bool = False,
+    dir_only: bool = False,
 ) -> str:
     """
     Show latest directory and request user input
     If user input is empty then choose the latest directory
     otherwise, choose the user input
     """
-    candidate = find_latest_subdirectory_or_file(dirname, prefix, suffix)
-    print(
-        "With prefix ",
-        prefix,
-        " and suffix ",
-        suffix,
-        (
-            ", the latest directory/file (depending on which type you"
-            " request) is "
-        ),
-        os.path.basename(candidate),
+    assert not (file_only and dir_only)
+    candidate = find_latest_subdirectory_or_file(
+        dirname, prefix, suffix, file_only, dir_only
     )
-    user_input = input(
-        "Press enter to use it, or please input the directory (without prefix"
-        " or suffix) you want to use (e.g, upload):"
+    if candidate is None:
+        print(
+            "With prefix ",
+            prefix,
+            " and suffix ",
+            suffix,
+            "no directory/file (depending on which type you request) is found",
+        )
+    else:
+        print(
+            "With prefix ",
+            prefix,
+            " and suffix ",
+            suffix,
+            (
+                ", the latest directory/file (depending on which type you"
+                " request) is "
+            ),
+            os.path.basename(candidate),
+        )
+
+    user_input: str = input(
+        "Press enter to use it, or please input the directory (without"
+        " prefix or suffix) you want to use (e.g, upload):"
     )
+    while len(user_input) == 0 and candidate is None:
+        user_input = input(
+            "You must specify a directory/file because no candidate is found"
+        )
     if len(user_input) == 0:
         result = candidate
+        assert isinstance(result, str)
     else:
         if user_input.startswith(
             "///"
@@ -199,28 +235,37 @@ def ask_subdirectory_or_file(
     return result
 
 
-def ask_subdirectory(
-    dirname: str, prefix: str, results_dir: str
+def ask_subdirectory(dirname: str, prefix: str, results_dir: str) -> str:
+    result = ask_subdirectory_or_file(
+        dirname, prefix, results_dir, dir_only=True
+    )
+    return result
+
+
+def find_latest_subdirectory(
+    dirname: str, prefix: str, suffix: str = ""
 ) -> str:
-    while 1:
-        result = ask_subdirectory_or_file(
-            dirname, prefix, results_dir
-        )
-        if os.path.isdir(result):
-            return result
-        else:
-            print(result, "is not a directory. try again")
-    raise RuntimeError("Unreachable")
+    result = find_latest_subdirectory_or_file(
+        dirname, prefix, suffix, dir_only=True
+    )
+    assert result is not None, "Latest subdirectory Not found"
+    return result
 
 
 def ask_file(dirname: str, prefix: str, suffix: str = "") -> str:
-    while 1:
-        result = ask_subdirectory_or_file(dirname, prefix, "", suffix)
-        if os.path.isfile(result):
-            return result
-        else:
-            print(result, "is not a file. try again")
-    raise RuntimeError("Unreachable")
+    result = ask_subdirectory_or_file(
+        dirname, prefix, "", suffix, file_only=True
+    )
+
+    return result
+
+
+def find_latest_file(dirname: str, prefix: str, suffix: str = "") -> str:
+    result = find_latest_subdirectory_or_file(
+        dirname, prefix, suffix, file_only=True
+    )
+    assert result is not None, "Latest file Not found"
+    return result
 
 
 def generate_filename(
@@ -331,3 +376,6 @@ def update_gspread(entries, ws: Worksheet, cell_range=None) -> None:
     # cells_list = ws.range(1, 1, num_rows, num_cols) # row, column, row_end, column_end. 1 1 stands for A1
     # cells_list = ws.range("E1:G120")
     # ws.format(cell_range, {"numberFormat": {"type": "DATE", "pattern": "mmmm dd"}, "horizontalAlignment": "CENTER"})
+
+
+# TODO: implement download_from_gspread and resume the kernel search work accordingly

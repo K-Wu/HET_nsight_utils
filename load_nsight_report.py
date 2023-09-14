@@ -48,13 +48,12 @@ def extract_info_from_nsys(
     )
 
 
-def upload_nsys_report(
+def get_csv_rows_from_nsys_report(
     subdir_path: str,
     nsys_report_name: str,
-    spreadsheet_url: str,
     classify_het_kernel_func: Callable[[str], str],
-    filename_fmt: str,
-):
+    extract_info_from_nsys_filename: Callable[[str], list[str]],
+) -> "list[list[str]]":
     raw_csvs: list[list[list[str]]] = []
     for filename in os.listdir(subdir_path):
         if filename.endswith(".nsys-rep"):
@@ -64,8 +63,8 @@ def upload_nsys_report(
                 nsys_report_name,
                 classify_het_kernel_func,
             )
-            info_from_filename: list[str] = extract_info_from_nsys(
-                filename, filename_fmt
+            info_from_filename: list[str] = extract_info_from_nsys_filename(
+                filename
             )
             curr_csv = [info_from_filename + row for row in curr_csv]
             # For info from filename, Set INFO[idx] as the column names in header row
@@ -75,8 +74,25 @@ def upload_nsys_report(
 
     # Combine all csvs into one
     # csv_rows = [item for sublist in raw_csvs for item in sublist]
-    csv_rows = simple_combine_nsys_csvs(raw_csvs)
-    print(csv_rows)
+    csv_rows: list[list[str]] = simple_combine_nsys_csvs(raw_csvs)
+    # print(csv_rows)
+    return csv_rows
+
+
+def upload_nsys_report(
+    subdir_path: str,
+    nsys_report_name: str,
+    spreadsheet_url: str,
+    classify_het_kernel_func: Callable[[str], str],
+    filename_fmt: str,
+):
+    csv_rows: list[list[str]] = get_csv_rows_from_nsys_report(
+        subdir_path,
+        nsys_report_name,
+        classify_het_kernel_func,
+        lambda filename: extract_info_from_nsys(filename, filename_fmt),
+    )
+
     # Create worksheet
     worksheet_title = f"[{get_pretty_hostname()}]{subdir_path.split('/')[-1]}"[
         :100

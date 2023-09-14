@@ -1,7 +1,6 @@
 from .run_once import run_once
 from functools import lru_cache
 import os
-from typing import Tuple
 
 
 @lru_cache(maxsize=None)
@@ -16,9 +15,6 @@ def get_functions_from_ctags_table(ctags_table: str) -> set[str]:
         if line.startswith("HET_") and line.endswith("f"):
             result.add(line.split("\t")[0])
     return result
-
-
-
 
 
 def classify_fw_bw_kernel(func_pretty_name: str) -> str:
