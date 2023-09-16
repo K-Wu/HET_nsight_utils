@@ -1,6 +1,6 @@
 # Some code is from https://github.com/COVID19Tracking/ltc-data-processing
 # And https://github.com/nlioc4/FSBot/blob/f7f1a000ec7d02056c136fe68b7f0ca2271c80ae/modules/accounts_handler.py#L326
-# To create a credential, or set up a new spreasheet, follow instruction at https://docs.gspread.org/en/latest/oauth2.html#for-bots-using-service-account
+# To create a credential, or set up a new spreasheet, follow instruction at https://docs.gspread.org/en/latest/nsight_utils/oauth2.html#for-bots-using-service-account
 import gspread
 from gspread import Worksheet, WorksheetNotFound
 from gspread.utils import finditem
