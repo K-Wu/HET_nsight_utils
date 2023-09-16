@@ -6,6 +6,7 @@ from functools import lru_cache
 from .run_once import run_once
 import datetime
 
+
 @lru_cache(maxsize=None)
 @run_once
 def assert_git_exists() -> None:
@@ -31,7 +32,6 @@ def assert_gh_exists():
 
 
 @lru_cache(maxsize=None)
-@run_once
 def get_spreadsheet_url() -> str:
     """Get the SPREADSHEET_URL github repo variable by `gh variable list |grep SPREADSHEET_URL`."""
     assert_git_exists()

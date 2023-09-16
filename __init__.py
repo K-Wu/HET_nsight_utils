@@ -3,6 +3,7 @@ from .detect_pwd import (
     get_git_root_path,
     get_env_name_from_setup,
     create_new_results_dir,
+    assert_git_exists,
 )
 from .upload_benchmark_results import (
     ConfigCanonicalizer,
@@ -50,6 +51,8 @@ __all__ = [
     "run_once",
     "get_git_root_path",
     "get_env_name_from_setup",
+    "create_new_results_dir",
+    "assert_git_exists",
     "ConfigCanonicalizer",
     "generate_filename",
     "ask_file",
@@ -80,5 +83,4 @@ __all__ = [
     "print_system_info",
     "print_python_env_info",
     "print_conda_envs_info",
-    "create_new_results_dir",
 ]  # this suppresses the warning F401
