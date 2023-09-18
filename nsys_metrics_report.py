@@ -6,6 +6,7 @@ rawTimestamp is in nanoseconds
 from .load_nsight_report import (
     get_nsys_recipe_package_path,
     get_nsysstats_package_path,
+    extract_sqlite_from_nsys_report,
 )
 import sys
 
@@ -70,6 +71,9 @@ FROM
 if __name__ == "__main__":
     parsed_args = argparse.Namespace(
         rows=-1,
+    )
+    extract_sqlite_from_nsys_report(
+        "utils/nsight_utils/test/graphiler.fb15k_RGAT.bg.breakdown.nsys-rep"
     )
     df = helpers.stats_cls_to_df(
         "utils/nsight_utils/test/graphiler.fb15k_RGAT.bg.breakdown.sqlite",

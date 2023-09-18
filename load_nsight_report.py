@@ -215,7 +215,8 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
     if os.path.exists(output_filename):
         print(f"{output_filename} already exists")
         return
-    os.popen("nsys export -t sqlite -o {output_filename} {filename}")
+    # Use read() to make the call blocking
+    os.popen(f"nsys export -t sqlite -o {output_filename} {filename}").read()
     return
 
 
