@@ -9,7 +9,9 @@ from .upload_benchmark_results import (
     update_gspread,
     get_pretty_hostname,
     NameCanonicalizer,
+    find_latest_subdirectory,
 )
+import sys
 import traceback
 from typing import Callable
 
@@ -121,6 +123,37 @@ def nsys_exists() -> bool:
 
 @lru_cache(maxsize=None)
 @run_once
+def nsys_version_larger_than(version: str = "2023.3.1"):
+    """Check if nsys version is larger than the specified version."""
+    assert nsys_exists(), "nsys is not installed"
+    nsys_version = os.popen("nsys --version").read().split()[-1].strip()
+    return nsys_version >= version
+
+
+@lru_cache(maxsize=None)
+def get_nsys_recipe_package_path() -> str:
+    """Get the path of the nsys recipe package."""
+    assert (
+        nsys_version_larger_than()
+    ), "nsys older than 2023.3.1 may not support recipe"
+    nsys_path = find_latest_subdirectory("/opt/nvidia/nsight-systems/", "")
+    package_path = os.path.join(
+        nsys_path, "target-linux-x64", "python", "packages"
+    )
+    return package_path
+
+
+@lru_cache(maxsize=None)
+def get_nsysstats_package_path() -> str:
+    """Get the path of the nsysstats package."""
+    assert nsys_exists(), "nsys is not installed"
+    nsys_path = find_latest_subdirectory("/opt/nvidia/nsight-systems/", "")
+    package_path = os.path.join(nsys_path, "target-linux-x64", "python", "lib")
+    return package_path
+
+
+@lru_cache(maxsize=None)
+@run_once
 def ncu_exists() -> bool:
     """Check if ncu is installed."""
     return os.system("ncu --version >/dev/null 2>/dev/null") == 0
@@ -171,6 +204,19 @@ def _extract_csv_from_nsys_cli_output(
             row.append("")
 
     return csv_rows
+
+
+def extract_sqlite_from_nsys_report(filename: str) -> None:
+    """Extract sqlite from nsys report file."""
+    assert nsys_exists(), "nsys is not installed"
+    assert os.path.exists(filename), f"{filename} does not exist"
+    assert filename.endswith(".nsys-rep"), f"{filename} is not a nsys report"
+    output_filename = filename[: filename.rfind(".nsys-rep")] + ".sqlite"
+    if os.path.exists(output_filename):
+        print(f"{output_filename} already exists")
+        return
+    os.popen("nsys export -t sqlite -o {output_filename} {filename}")
+    return
 
 
 def load_nsys_report(
