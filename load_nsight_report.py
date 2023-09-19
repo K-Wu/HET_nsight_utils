@@ -2,7 +2,7 @@ import os
 import re
 from .run_once import run_once
 from functools import lru_cache
-from typing import Tuple, Union
+from typing import Union
 from .classify_het_kernels import classify_fw_bw_kernel
 from .upload_benchmark_results import (
     create_worksheet,
@@ -10,7 +10,7 @@ from .upload_benchmark_results import (
     get_pretty_hostname,
     NameCanonicalizer,
     find_latest_subdirectory,
-    NameCanonicalizer
+    NameCanonicalizer,
 )
 import sys
 import traceback
@@ -161,7 +161,8 @@ def ncu_exists() -> bool:
 
 
 def _extract_csv_from_nsys_cli_output(
-    nsys_cli_output: str, classify_het_kernel_func: Callable[[str], str]
+    nsys_cli_output: str,
+    classify_het_kernel_func: Union[Callable[[str], str], None],
 ) -> "list[list[str]]":
     """Extract csv from nsys cli output."""
     import csv
@@ -198,7 +199,10 @@ def _extract_csv_from_nsys_cli_output(
         kernel_name = row[kernel_name_col_idx]
         pretty_name = prettify_name_from_func_signature(kernel_name)
         row.append(pretty_name)
-        if classify_het_kernel_func(pretty_name) != "Non-HET Others":
+        if (
+            classify_het_kernel_func is not None
+            and classify_het_kernel_func(pretty_name) != "Non-HET Others"
+        ):
             row.append(str(het_id))
             het_id += 1
         else:
@@ -224,7 +228,7 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
 def load_nsys_report(
     filename: str,
     report_name: str,
-    classify_het_kernel_func: Callable[[str], str],
+    classify_het_kernel_func: Union[Callable[[str], str], None],
 ) -> "list[list[str]]":
     """Load a report from a nsys report file. The output, list[list[str]] is each cell in each row in the csv format output."""
     assert nsys_exists(), "nsys is not installed"
@@ -254,8 +258,8 @@ def get_raw_column_idx_and_convertion(
     header: "list[str]",
     units: "list[str]",
     columns: "set[str]",
-    metric_unit_conversion: "dict[Tuple[str, str], Tuple[str, int]]",
-) -> Tuple["dict[str, int]", "dict[str, int]", "list[str]"]:
+    metric_unit_conversion: "dict[tuple[str, str], tuple[str, int]]",
+) -> tuple["dict[str, int]", "dict[str, int]", "list[str]"]:
     raw_column_idx: dict[str, int] = {}
     exponential_to_apply: dict[str, int] = {}
     new_units: list[str] = [*units]
@@ -305,7 +309,7 @@ def extract_ncu_values_from_raws(
         "l1tex__m_xbar2l1tex_read_bytes.sum.peak_sustained",  # "Theoretical L2 Cache Bytes Accessible" value per cycle
         "lts__cycles_elapsed.avg.per_second",  # "L2 cache frequency" cycle per second
     },
-    metric_unit_conversion: "dict[Tuple[str, str], Tuple[str, int]]" = {
+    metric_unit_conversion: "dict[tuple[str, str], tuple[str, int]]" = {
         ("dram__bytes.sum.peak_sustained", "Kbyte/cycle"): ("byte/cycle", 3),
         ("dram__bytes.sum.per_second", "Tbyte/second"): ("Gbyte/second", 3),
     },
@@ -361,23 +365,23 @@ def extract_ncu_values_from_raws(
 
 def reorder_columns_in_raw_csv(
     kernel_instances_per_row: "list[list[str]]",
-    metric_front: "list[Tuple[str,str]]",
-    metric_end: "list[Tuple[str,str]]",
+    metric_front: "list[tuple[str,str]]",
+    metric_end: "list[tuple[str,str]]",
 ) -> "list[list[str]]":
     """
     Reorder the columns in raw csv so that the first few columns are those specified in front, and the last few columns are those specified in end
     """
     header: list[str] = kernel_instances_per_row[0]
     units: list[str] = kernel_instances_per_row[1]
-    header_and_units: list[Tuple[str, str]] = [
+    header_and_units: list[tuple[str, str]] = [
         (header[i], units[i]) for i in range(len(header))
     ]
-    kernel_identifier_columns: list[Tuple[str, str]] = [
+    kernel_identifier_columns: list[tuple[str, str]] = [
         ("ID", ""),
         ("Pretty Name", ""),
         ("Kernel Name", ""),
     ]
-    new_header_and_units: list[Tuple[str, str]] = (
+    new_header_and_units: list[tuple[str, str]] = (
         kernel_identifier_columns
         + metric_front
         + list(
@@ -401,7 +405,7 @@ def reorder_columns_in_raw_csv(
 
 
 def get_float_metric_or_zero(
-    metrics: "dict[Tuple[str, str], str]", key: Tuple[str, str]
+    metrics: "dict[tuple[str, str], str]", key: tuple[str, str]
 ) -> float:
     if key not in metrics:
         return 0.0
@@ -410,8 +414,8 @@ def get_float_metric_or_zero(
 
 
 def derive_rooflines(
-    kernel_instances_metrics: "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
-    metrics_and_units: "set[Tuple[str, str]]",
+    kernel_instances_metrics: "dict[tuple[str, str, str], dict[tuple[str, str], str]]",
+    metrics_and_units: "set[tuple[str, str]]",
 ) -> None:
     """compute rooflines and achieved values and add them to kernel_instances_metrics, and headers to metrics_and_units
     The units are from profiling results from RTX 3090. It may be subject to models and hardware.
@@ -522,8 +526,8 @@ EXPONENTIAL_TO_UNITS[0] = ""
 
 
 def derive_kernel_categories(
-    kernel_instances_metrics: "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
-    metrics_and_units: "set[Tuple[str, str]]",
+    kernel_instances_metrics: "dict[tuple[str, str, str], dict[tuple[str, str], str]]",
+    metrics_and_units: "set[tuple[str, str]]",
     classify_het_kernel_func: Callable[[str], str],
 ) -> None:
     metrics_and_units.add(("Kernel Category", ""))
@@ -536,8 +540,8 @@ def derive_kernel_categories(
 
 
 def derive_kernel_forward_or_backward(
-    kernel_instances_metrics: "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
-    metrics_and_units: "set[Tuple[str, str]]",
+    kernel_instances_metrics: "dict[tuple[str, str, str], dict[tuple[str, str], str]]",
+    metrics_and_units: "set[tuple[str, str]]",
 ) -> None:
     metrics_and_units.add(("Kernel Forward or Backward", ""))
     for kernel_identifier in kernel_instances_metrics:
@@ -567,10 +571,10 @@ def consolidate_ncu_details(
         key: header.index(key) for key in metric_columns
     }
     kernel_instances_metrics: dict[
-        Tuple[str, str, str], dict[Tuple[str, str], str]
+        tuple[str, str, str], dict[tuple[str, str], str]
     ] = {}
 
-    metrics_and_units: set[Tuple[str, str]] = set()
+    metrics_and_units: set[tuple[str, str]] = set()
     for row in metric_per_row[1:]:
         kernel_identifier: tuple[str, str, str] = (
             row[name_columns_idx["ID"]],
@@ -633,8 +637,8 @@ def consolidate_ncu_details(
 
 
 def convert_kernel_instances_metrics_to_ncu_raw_csv(
-    kernel_instances_metrics: "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
-    metrics_and_units: "set[Tuple[str, str]]",
+    kernel_instances_metrics: "dict[tuple[str, str, str], dict[tuple[str, str], str]]",
+    metrics_and_units: "set[tuple[str, str]]",
 ) -> "list[list[str]]":
     result_header: list[str] = ["ID", "Pretty Name", "Kernel Name"] + [
         ele[0] for ele in sorted(metrics_and_units, reverse=True)
@@ -660,14 +664,14 @@ def convert_kernel_instances_metrics_to_ncu_raw_csv(
 
 def convert_ncu_raw_csvs_to_kernel_instances_metrics(
     raw_csv: "list[list[str]]",
-) -> Tuple[
-    "set[Tuple[str, str]]",
-    "dict[Tuple[str, str, str], dict[Tuple[str, str], str]]",
+) -> tuple[
+    "set[tuple[str, str]]",
+    "dict[tuple[str, str, str], dict[tuple[str, str], str]]",
 ]:
     kernel_instances_metrics: dict[
-        Tuple[str, str, str], dict[Tuple[str, str], str]
+        tuple[str, str, str], dict[tuple[str, str], str]
     ] = {}
-    metrics_and_units: set[Tuple[str, str]] = set()
+    metrics_and_units: set[tuple[str, str]] = set()
     header: list[str] = raw_csv[0]
     units: list[str] = raw_csv[1]
     assert header[0] == "ID", f"header[0] = {header[0]} != ID"
@@ -735,9 +739,9 @@ def combine_ncu_raw_csvs(
     """
     assert len(raw_csv_list) > 0
     kernel_instances_metrics: dict[
-        Tuple[str, ...], dict[Tuple[str, str], str]
+        tuple[str, ...], dict[tuple[str, str], str]
     ] = {}
-    metrics_and_units: set[Tuple[str, str]] = set()
+    metrics_and_units: set[tuple[str, str]] = set()
     for raw_csv_ in raw_csv_list:
         header: list[str] = raw_csv_[0]
         units: list[str] = raw_csv_[1]
@@ -829,7 +833,7 @@ def mul_two_units(lhs: str, rhs: str) -> str:
     )
 
 
-def canonicalize_unit(unit: str) -> Tuple[int, "list[str]", "list[str]"]:
+def canonicalize_unit(unit: str) -> tuple[int, "list[str]", "list[str]"]:
     # extract exponential, numerator, denominator from unit
     if len(unit.split("/")) > 1:
         numerator = canonicalize_unit(unit.split("/")[0])
@@ -843,7 +847,7 @@ def canonicalize_unit(unit: str) -> Tuple[int, "list[str]", "list[str]"]:
 
 def _simplify_unit_fraction(
     nominator: "list[str]", denominator: "list[str]"
-) -> Tuple["list[str]", "list[str]"]:
+) -> tuple["list[str]", "list[str]"]:
     # simplify the fraction
     for idx in range(len(nominator)):
         if nominator[idx] in denominator:
@@ -855,9 +859,9 @@ def _simplify_unit_fraction(
 
 
 def _div_two_units(
-    lhs: Tuple[int, "list[str]", "list[str]"],
-    rhs: Tuple[int, "list[str]", "list[str]"],
-) -> Tuple[int, "list[str]", "list[str]"]:
+    lhs: tuple[int, "list[str]", "list[str]"],
+    rhs: tuple[int, "list[str]", "list[str]"],
+) -> tuple[int, "list[str]", "list[str]"]:
     nominator = lhs[1] + rhs[2]
     denominator = rhs[1] + lhs[2]
     nominator, denominator = _simplify_unit_fraction(nominator, denominator)
@@ -865,9 +869,9 @@ def _div_two_units(
 
 
 def _mul_two_units(
-    lhs: Tuple[int, "list[str]", "list[str]"],
-    rhs: Tuple[int, "list[str]", "list[str]"],
-) -> Tuple[int, "list[str]", "list[str]"]:
+    lhs: tuple[int, "list[str]", "list[str]"],
+    rhs: tuple[int, "list[str]", "list[str]"],
+) -> tuple[int, "list[str]", "list[str]"]:
     nominator = lhs[1] + rhs[1]
     denominator = rhs[2] + lhs[2]
     nominator, denominator = _simplify_unit_fraction(nominator, denominator)
@@ -898,7 +902,7 @@ def extract_ncu_values_from_details(
         "Executed Ipc Elapsed",  # unit: "inst/cycle"
         "Duration",
     },
-    metric_unit_conversion: "dict[Tuple[str, str], Tuple[str, int]]" = {
+    metric_unit_conversion: "dict[tuple[str, str], tuple[str, int]]" = {
         ("Memory Throughput", "Kbyte/second"): ("Gbyte/second", -6),
         ("Memory Throughput", "Mbyte/second"): ("Gbyte/second", -3),
         ("Memory Throughput", "Tbyte/second"): ("Gbyte/second", 3),
