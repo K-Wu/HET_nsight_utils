@@ -35,8 +35,6 @@ from .load_nsight_report import (
     load_nsys_report,
     consolidate_ncu_details,
     prettify_name_from_func_signature,
-)
-from .upload_cache_and_roofline import (
     extract_from_ncu_folder,
     extract_from_ncu_file,
 )
