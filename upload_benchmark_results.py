@@ -10,6 +10,19 @@ from abc import abstractmethod
 import os
 import socket
 
+import logging
+
+LOG = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format=(
+        "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d]"
+        " %(threadName)15s: %(message)s"
+    ),
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.INFO,
+)
+
 
 class ConfigCanonicalizer:
     @classmethod
@@ -32,11 +45,11 @@ class ConfigCanonicalizer:
     def validate_config_fmt(cls, input_fmt: str) -> None:
         configs = input_fmt.split(".")
         if "ax_in" not in configs:
-            print("ax_in is not in configs")
+            LOG.warning("ax_in is not in configs")
         if "ax_out" not in configs:
-            print("ax_out is not in configs")
+            LOG.warning("ax_out is not in configs")
         if "ax_head" not in configs:
-            print("ax_head is not in configs")
+            LOG.warning("ax_head is not in configs")
 
     @classmethod
     def canonicalize_list(
@@ -193,24 +206,15 @@ def ask_subdirectory_or_file(
         dirname, prefix, suffix, file_only, dir_only
     )
     if candidate is None:
-        print(
-            "With prefix ",
-            prefix,
-            " and suffix ",
-            suffix,
-            "no directory/file (depending on which type you request) is found",
+        LOG.warning(
+            f"With prefix {prefix} and suffix {suffix} no directory/file"
+            " (depending on which type you request) is found"
         )
     else:
-        print(
-            "With prefix ",
-            prefix,
-            " and suffix ",
-            suffix,
-            (
-                ", the latest directory/file (depending on which type you"
-                " request) is "
-            ),
-            os.path.basename(candidate),
+        LOG.warning(
+            f"With prefix {prefix} and suffix {suffix}, the latest"
+            " directory/file (depending on which type you request) is"
+            f" {os.path.basename(candidate)}"
         )
 
     user_input: str = input(
@@ -278,7 +282,7 @@ def generate_filename(
 
     ret: str = prefix + time.strftime(time_format, time.localtime()) + suffix
     if os.path.exists(os.path.join(dirname, ret)):
-        print("WARNING: ", ret, "already exists")
+        LOG.warning(f"{ret} already exists")
     return ret
 
 
@@ -339,7 +343,7 @@ def get_cell_range_from_A1(
     cell_range += gspread.utils.rowcol_to_a1(
         row_idx_beg + num_rows, col_idx_beg + num_cols
     )
-    print(cell_range)
+    LOG.warning(cell_range)
     return cell_range
 
 

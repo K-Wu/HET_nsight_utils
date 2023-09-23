@@ -12,9 +12,22 @@ from .upload_benchmark_results import (
     find_latest_subdirectory,
     NameCanonicalizer,
 )
-import sys
 import traceback
 from typing import Callable
+
+
+import logging
+
+LOG = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format=(
+        "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d]"
+        " %(threadName)15s: %(message)s"
+    ),
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.INFO,
+)
 
 
 def simple_combine_nsys_csvs(
@@ -60,7 +73,7 @@ def get_csv_rows_from_nsys_report(
     raw_csvs: list[list[list[str]]] = []
     for filename in os.listdir(subdir_path):
         if filename.endswith(".nsys-rep"):
-            print("extract Processing", filename)
+            LOG.info(f"extract Processing {filename}")
             curr_csv: list[list[str]] = load_nsys_report(
                 os.path.join(subdir_path, filename),
                 nsys_report_name,
@@ -103,16 +116,16 @@ def upload_nsys_report(
     try:
         worksheet = create_worksheet(spreadsheet_url, worksheet_title)
     except Exception as e:
-        print("Failed to create worksheet:", e)
-        print(traceback.format_exc())
+        LOG.error(f"Failed to create worksheet: {e}")
+        LOG.error(traceback.format_exc())
         exit(1)
 
     # Upload
     try:
         update_gspread(csv_rows, worksheet)
     except Exception as e:
-        print("Failed to upload ncu results:", e)
-        print(traceback.format_exc())
+        LOG.error(f"Failed to upload ncu results: {e}")
+        LOG.error(traceback.format_exc())
 
 
 @lru_cache(maxsize=None)
@@ -218,7 +231,7 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
     assert filename.endswith(".nsys-rep"), f"{filename} is not a nsys report"
     output_filename = filename[: filename.rfind(".nsys-rep")] + ".sqlite"
     if os.path.exists(output_filename):
-        print(f"{output_filename} already exists")
+        LOG.error(f"{output_filename} already exists")
         return
     # Use read() to make the call blocking
     os.popen(f"nsys export -t sqlite -o {output_filename} {filename}").read()
@@ -701,15 +714,9 @@ def convert_ncu_raw_csvs_to_kernel_instances_metrics(
                 ] = curr_value
                 metrics_and_units.add((curr_metric, curr_unit))
             else:
-                print(
-                    "Warning: duplicate metric",
-                    curr_metric,
-                    curr_unit,
-                    curr_value,
-                    kernel_identifier,
-                    kernel_instances_metrics[kernel_identifier][
-                        (curr_metric, curr_unit)
-                    ],
+                LOG.warning(
+                    "Warning: duplicate metric"
+                    f" {curr_metric} {curr_unit} {curr_value} {kernel_identifier} {kernel_instances_metrics[kernel_identifier][(curr_metric, curr_unit)]}"
                 )
     return metrics_and_units, kernel_instances_metrics
 
@@ -773,15 +780,9 @@ def combine_ncu_raw_csvs(
                     ] = curr_value
                     metrics_and_units.add((curr_metric, curr_unit))
                 else:
-                    print(
-                        "Warning: duplicate metric",
-                        curr_metric,
-                        curr_unit,
-                        curr_value,
-                        kernel_identifier,
-                        kernel_instances_metrics[kernel_identifier][
-                            (curr_metric, curr_unit)
-                        ],
+                    LOG.warning(
+                        "Warning: duplicate metric"
+                        f" {curr_metric} {curr_unit} {curr_value} {kernel_identifier} {kernel_instances_metrics[kernel_identifier][(curr_metric, curr_unit)]}"
                     )
 
     # using stale values
@@ -973,9 +974,8 @@ def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
                 result.append(line[1:-2].split('","'))
             continue
 
-        print(
-            'Warning:  line does not start with " or end with " skipping:',
-            line,
+        LOG.warning(
+            f'line does not start with " or end with " skipping: {line}'
         )
     return result
 
@@ -1074,7 +1074,7 @@ def extract_from_ncu_folder(
     raw_csvs: list[list[list[str]]] = []
     len_info_from_filename: int = -1
     for filename in os.listdir(path):
-        print("extract_from_ncu_folder Processing", filename)
+        LOG.info(f"extract_from_ncu_folder Processing {filename}")
         if filename.endswith(".ncu-rep"):
             raw_csvs.append(
                 extract_from_ncu_file(
@@ -1119,7 +1119,7 @@ def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
         if len(metric_units[metric]) != 1:
             if len(metric_units[metric]) == 2 and "%" in metric_units[metric]:
                 continue
-            print(
+            LOG.warning(
                 f"Metric {metric} has different units: {metric_units[metric]}"
             )
             return False
