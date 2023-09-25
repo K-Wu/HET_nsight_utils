@@ -10,6 +10,20 @@ from .load_nsight_report import (
 )
 import sys
 
+
+import logging
+
+LOG = logging.getLogger(__name__)
+
+logging.basicConfig(
+    format=(
+        "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d]"
+        " %(threadName)15s: %(message)s"
+    ),
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.INFO,
+)
+
 sys.path.append(get_nsys_recipe_package_path())
 sys.path.append(get_nsysstats_package_path())
 import nsysstats
@@ -56,7 +70,7 @@ FROM
         self.statements = []
 
         if self.parsed_args.rows > 0:
-            print(
+            LOG.info(
                 "Limiting query to {ROW_LIMIT} rows".format(
                     ROW_LIMIT=self.parsed_args.rows
                 )
@@ -65,7 +79,7 @@ FROM
                 ROW_LIMIT=self.parsed_args.rows
             )
         else:
-            print("Querying all rows")
+            LOG.info("Querying all rows")
 
         self.query = self.query_metrics
 
