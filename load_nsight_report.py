@@ -335,11 +335,11 @@ def extract_ncu_values_from_raws(
     assert (
         header[4] == "Kernel Name"
     ), f"header[4] = {header[4]} != Kernel Name"
-    NCU_DETAILS_COLUMN_IDX: dict[str, int]
+    ncu_raw_column_idx: dict[str, int]
     exponential_to_apply: dict[str, int]
     new_units: list[str]
     (
-        NCU_DETAILS_COLUMN_IDX,
+        ncu_raw_column_idx,
         exponential_to_apply,
         new_units,
     ) = get_raw_column_idx_and_convertion(
@@ -348,16 +348,11 @@ def extract_ncu_values_from_raws(
         raw_metrics,
         metric_unit_conversion,
     )
-    # for idx in NCU_DETAILS_COLUMN_IDX.values():
-    #    print(f"header[{idx}] = {header[idx]}, units[{idx}] = {units[idx]}")
     results: list[list[str]] = [
         ["ID", "Pretty Name", "Kernel Name"]
-        + [key for key in NCU_DETAILS_COLUMN_IDX],
+        + [key for key in ncu_raw_column_idx],
         ["", "", ""]
-        + [
-            new_units[NCU_DETAILS_COLUMN_IDX[key]]
-            for key in NCU_DETAILS_COLUMN_IDX
-        ],
+        + [new_units[ncu_raw_column_idx[key]] for key in ncu_raw_column_idx],
     ]
     for row in ncu_details_csv[2:]:  # Skip header and units
         results.append(
@@ -368,10 +363,10 @@ def extract_ncu_values_from_raws(
             ]
             + [
                 str(
-                    float(row[NCU_DETAILS_COLUMN_IDX[key]])
+                    float(row[ncu_raw_column_idx[key]])
                     * 10 ** exponential_to_apply[key]
                 )
-                for key in NCU_DETAILS_COLUMN_IDX
+                for key in ncu_raw_column_idx
             ]
         )
     return results
