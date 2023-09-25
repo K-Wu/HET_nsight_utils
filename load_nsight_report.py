@@ -51,7 +51,7 @@ def extract_info_from_nsys(
     )
 
 
-def get_csv_rows_from_nsys_report(
+def load_from_nsys_reports_folders(
     subdir_path: str,
     nsys_report_name: str,
     classify_het_kernel_func: Callable[[str], str],
@@ -60,6 +60,7 @@ def get_csv_rows_from_nsys_report(
     raw_csvs: list[list[list[str]]] = []
     for filename in os.listdir(subdir_path):
         if filename.endswith(".nsys-rep"):
+            # For each .nsys-rep file, load the csv (load_nsys_report) and extract information from the filename.
             print("extract Processing", filename)
             curr_csv: list[list[str]] = load_nsys_report(
                 os.path.join(subdir_path, filename),
@@ -82,14 +83,14 @@ def get_csv_rows_from_nsys_report(
     return csv_rows
 
 
-def upload_nsys_report(
+def upload_nsys_reports(
     subdir_path: str,
     nsys_report_name: str,
     spreadsheet_url: str,
     classify_het_kernel_func: Callable[[str], str],
     filename_fmt: str,
 ):
-    csv_rows: list[list[str]] = get_csv_rows_from_nsys_report(
+    csv_rows: list[list[str]] = load_from_nsys_reports_folders(
         subdir_path,
         nsys_report_name,
         classify_het_kernel_func,

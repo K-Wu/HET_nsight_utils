@@ -15,9 +15,11 @@ sys.path.append(get_nsysstats_package_path())
 import nsysstats
 from nsys_recipe.lib import helpers
 import argparse
-
+import pandas
 
 class RawGpuMetricUtilReport(nsysstats.Report):
+    """The rawTimestamp is the beginning timestamp of the collected metric. In other words, in nsys, the timeline [rawTimestamp, rawTimestamp + 1.0sec/metricCollectionFrequency] shows the metric value at rawTimestamp."""
+
     query_metrics = """
 WITH
     metrics AS (
@@ -66,6 +68,21 @@ FROM
             print("Querying all rows")
 
         self.query = self.query_metrics
+
+
+def load_raw_gpu_metric_util_report(
+    nsys_filename: str, row_limit: int = -1
+) -> "pandas.DataFrame":
+    """Load the raw gpu metric util report from the nsys report file. row_limit is by default -1, meaning loading all rows."""
+    parsed_args = argparse.Namespace(
+        rows=row_limit,
+    )
+    extract_sqlite_from_nsys_report(nsys_filename)
+    assert nsys_filename.endswith(".nsys-rep")
+    db_filename = nsys_filename[: nsys_filename.rfind(".nsys-rep")] + ".sqlite"
+    return helpers.stats_cls_to_df(
+        db_filename, parsed_args, RawGpuMetricUtilReport
+    )
 
 
 if __name__ == "__main__":
