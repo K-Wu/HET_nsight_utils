@@ -64,7 +64,7 @@ FROM
 
     def setup(self):
         err = super().setup()
-        if err != None:
+        if err is not None:
             return err
 
         self.statements = []
