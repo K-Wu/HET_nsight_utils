@@ -2,6 +2,7 @@ import os
 import re
 from .run_once import run_once
 from functools import lru_cache
+import sys
 from typing import Union
 from .classify_het_kernels import classify_fw_bw_kernel
 from .upload_benchmark_results import (
@@ -119,7 +120,7 @@ def upload_nsys_reports(
     except Exception as e:
         LOG.error(f"Failed to create worksheet: {e}")
         LOG.error(traceback.format_exc())
-        exit(1)
+        sys.exit(1)
 
     # Upload
     try:
