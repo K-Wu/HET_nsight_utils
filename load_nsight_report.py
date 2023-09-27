@@ -2,6 +2,7 @@ import os
 import re
 from .run_once import run_once
 from functools import lru_cache
+import sys
 from typing import Union
 from .classify_het_kernels import classify_fw_bw_kernel
 from .upload_benchmark_results import (
@@ -119,7 +120,7 @@ def upload_nsys_reports(
     except Exception as e:
         LOG.error(f"Failed to create worksheet: {e}")
         LOG.error(traceback.format_exc())
-        exit(1)
+        sys.exit(1)
 
     # Upload
     try:
@@ -591,7 +592,7 @@ def consolidate_ncu_details(
             row[name_columns_idx["Kernel Name"]],
         )
         if kernel_identifier not in kernel_instances_metrics:
-            kernel_instances_metrics[kernel_identifier] = dict()
+            kernel_instances_metrics[kernel_identifier] = {}
         assert (
             row[metric_columns_idx["Metric Name"]],
             row[metric_columns_idx["Metric Unit"]],
@@ -697,7 +698,7 @@ def convert_ncu_raw_csvs_to_kernel_instances_metrics(
             row[2],
         )
         if kernel_identifier not in kernel_instances_metrics:
-            kernel_instances_metrics[kernel_identifier] = dict()
+            kernel_instances_metrics[kernel_identifier] = {}
         for metric_idx in range(3, len(row)):
             curr_metric = header[metric_idx]
             curr_unit = units[metric_idx]
@@ -762,7 +763,7 @@ def combine_ncu_raw_csvs(
                 row[:num_frozen_columns]
             )
             if kernel_identifier not in kernel_instances_metrics:
-                kernel_instances_metrics[kernel_identifier] = dict()
+                kernel_instances_metrics[kernel_identifier] = {}
             # Metric columns start from num_frozen_columns
             for metric_idx in range(num_frozen_columns, len(row)):
                 curr_metric = header[metric_idx]
@@ -1097,7 +1098,7 @@ def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
     check_metric_units_all_identical_from_ncu_folder("misc/artifacts/ncu_breakdown_202307180518") returns False after printing
     Metric derived__memory_l1_wavefronts_shared_excessive has different units: {'Kbyte', 'byte', 'Mbyte'}
     """
-    metric_units: dict[str, set[str]] = dict()
+    metric_units: dict[str, set[str]] = {}
     for filename in os.listdir(path):
         if filename.endswith(".ncu-rep"):
             raw_csv: list[list[str]] = load_ncu_report(
