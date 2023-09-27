@@ -40,7 +40,10 @@ def calc_avg_sm_metrics(
     )
 
     sm_active_ns_product: float = 0.0
-    for row_idx in range(lhs_row_idx, rhs_row_idx):
+    # The for loop is cut into two parts: notice that collection_start < kernel_start or kernel_end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx-1))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx-1), we always get kernel_start < collection_start < collection-end < kernel_end
+    for row_idx in set(range(lhs_row_idx, rhs_row_idx)).difference(
+        set(range(lhs_row_idx + 1, rhs_row_idx - 1))
+    ):
         # rhs_row_idx won't be included because its start timestamp is no less than kernel_end_timestamp
         if (
             df["rawTimestamp"][row_idx] + collection_cycle_ns
@@ -51,9 +54,9 @@ def calc_avg_sm_metrics(
             continue
         if (
             df["rawTimestamp"][row_idx] + collection_cycle_ns
-            > kernel_end_timestamp
+            >= kernel_end_timestamp
         ):
-            if df["rawTimestamp"][row_idx] < kernel_start_timestamp:
+            if df["rawTimestamp"][row_idx] <= kernel_start_timestamp:
                 # collection_start < kernel_start < kernel_end < collection_end
                 sm_active_ns_product += (
                     kernel_end_timestamp - kernel_start_timestamp
@@ -63,7 +66,7 @@ def calc_avg_sm_metrics(
                 sm_active_ns_product += (
                     kernel_end_timestamp - df["rawTimestamp"][row_idx]
                 ) * df["SmActive"][row_idx]
-        elif df["rawTimestamp"][row_idx] < kernel_start_timestamp:
+        elif df["rawTimestamp"][row_idx] <= kernel_start_timestamp:
             # collection_start < kernel_start < collection_end < kernel_end
             sm_active_ns_product += (
                 df["rawTimestamp"][row_idx]
@@ -72,9 +75,10 @@ def calc_avg_sm_metrics(
             ) * df["SmActive"][row_idx]
         else:
             # kernel_start < collection_start < collection_end < kernel_end
-            sm_active_ns_product += (
-                collection_cycle_ns * df["SmActive"][row_idx]
-            )
+            raise ValueError("This case should not happen")
+    for row_idx in range(lhs_row_idx + 1, rhs_row_idx - 1):
+        # kernel_start < collection_start < collection_end < kernel_end
+        sm_active_ns_product += collection_cycle_ns * df["SmActive"][row_idx]
     return sm_active_ns_product / (
         kernel_end_timestamp - kernel_start_timestamp
     )
