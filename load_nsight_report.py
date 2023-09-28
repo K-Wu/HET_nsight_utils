@@ -2,6 +2,7 @@ import os
 import re
 from .run_once import run_once
 from functools import lru_cache
+import sys
 from typing import Union
 from .classify_het_kernels import classify_fw_bw_kernel
 from .upload_benchmark_results import (
@@ -64,7 +65,7 @@ def extract_info_from_nsys(
     )
 
 
-def get_csv_rows_from_nsys_report(
+def load_from_nsys_reports_folders(
     subdir_path: str,
     nsys_report_name: str,
     classify_het_kernel_func: Callable[[str], str],
@@ -73,6 +74,7 @@ def get_csv_rows_from_nsys_report(
     raw_csvs: list[list[list[str]]] = []
     for filename in os.listdir(subdir_path):
         if filename.endswith(".nsys-rep"):
+            # For each .nsys-rep file, load the csv (load_nsys_report) and extract information from the filename.
             LOG.info(f"extract Processing {filename}")
             curr_csv: list[list[str]] = load_nsys_report(
                 os.path.join(subdir_path, filename),
@@ -95,14 +97,14 @@ def get_csv_rows_from_nsys_report(
     return csv_rows
 
 
-def upload_nsys_report(
+def upload_nsys_reports(
     subdir_path: str,
     nsys_report_name: str,
     spreadsheet_url: str,
     classify_het_kernel_func: Callable[[str], str],
     filename_fmt: str,
 ):
-    csv_rows: list[list[str]] = get_csv_rows_from_nsys_report(
+    csv_rows: list[list[str]] = load_from_nsys_reports_folders(
         subdir_path,
         nsys_report_name,
         classify_het_kernel_func,
@@ -118,7 +120,7 @@ def upload_nsys_report(
     except Exception as e:
         LOG.error(f"Failed to create worksheet: {e}")
         LOG.error(traceback.format_exc())
-        exit(1)
+        sys.exit(1)
 
     # Upload
     try:
@@ -334,11 +336,11 @@ def extract_ncu_values_from_raws(
     assert (
         header[4] == "Kernel Name"
     ), f"header[4] = {header[4]} != Kernel Name"
-    NCU_DETAILS_COLUMN_IDX: dict[str, int]
+    ncu_raw_column_idx: dict[str, int]
     exponential_to_apply: dict[str, int]
     new_units: list[str]
     (
-        NCU_DETAILS_COLUMN_IDX,
+        ncu_raw_column_idx,
         exponential_to_apply,
         new_units,
     ) = get_raw_column_idx_and_convertion(
@@ -347,16 +349,11 @@ def extract_ncu_values_from_raws(
         raw_metrics,
         metric_unit_conversion,
     )
-    # for idx in NCU_DETAILS_COLUMN_IDX.values():
-    #    print(f"header[{idx}] = {header[idx]}, units[{idx}] = {units[idx]}")
     results: list[list[str]] = [
         ["ID", "Pretty Name", "Kernel Name"]
-        + [key for key in NCU_DETAILS_COLUMN_IDX],
+        + [key for key in ncu_raw_column_idx],
         ["", "", ""]
-        + [
-            new_units[NCU_DETAILS_COLUMN_IDX[key]]
-            for key in NCU_DETAILS_COLUMN_IDX
-        ],
+        + [new_units[ncu_raw_column_idx[key]] for key in ncu_raw_column_idx],
     ]
     for row in ncu_details_csv[2:]:  # Skip header and units
         results.append(
@@ -367,10 +364,10 @@ def extract_ncu_values_from_raws(
             ]
             + [
                 str(
-                    float(row[NCU_DETAILS_COLUMN_IDX[key]])
+                    float(row[ncu_raw_column_idx[key]])
                     * 10 ** exponential_to_apply[key]
                 )
-                for key in NCU_DETAILS_COLUMN_IDX
+                for key in ncu_raw_column_idx
             ]
         )
     return results
@@ -595,7 +592,7 @@ def consolidate_ncu_details(
             row[name_columns_idx["Kernel Name"]],
         )
         if kernel_identifier not in kernel_instances_metrics:
-            kernel_instances_metrics[kernel_identifier] = dict()
+            kernel_instances_metrics[kernel_identifier] = {}
         assert (
             row[metric_columns_idx["Metric Name"]],
             row[metric_columns_idx["Metric Unit"]],
@@ -701,7 +698,7 @@ def convert_ncu_raw_csvs_to_kernel_instances_metrics(
             row[2],
         )
         if kernel_identifier not in kernel_instances_metrics:
-            kernel_instances_metrics[kernel_identifier] = dict()
+            kernel_instances_metrics[kernel_identifier] = {}
         for metric_idx in range(3, len(row)):
             curr_metric = header[metric_idx]
             curr_unit = units[metric_idx]
@@ -766,7 +763,7 @@ def combine_ncu_raw_csvs(
                 row[:num_frozen_columns]
             )
             if kernel_identifier not in kernel_instances_metrics:
-                kernel_instances_metrics[kernel_identifier] = dict()
+                kernel_instances_metrics[kernel_identifier] = {}
             # Metric columns start from num_frozen_columns
             for metric_idx in range(num_frozen_columns, len(row)):
                 curr_metric = header[metric_idx]
@@ -1101,7 +1098,7 @@ def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
     check_metric_units_all_identical_from_ncu_folder("misc/artifacts/ncu_breakdown_202307180518") returns False after printing
     Metric derived__memory_l1_wavefronts_shared_excessive has different units: {'Kbyte', 'byte', 'Mbyte'}
     """
-    metric_units: dict[str, set[str]] = dict()
+    metric_units: dict[str, set[str]] = {}
     for filename in os.listdir(path):
         if filename.endswith(".ncu-rep"):
             raw_csv: list[list[str]] = load_ncu_report(

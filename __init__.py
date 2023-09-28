@@ -28,7 +28,7 @@ from .classify_het_kernels import (
 from .load_nsight_report import (
     extract_ncu_values_from_details,
     load_ncu_report,
-    upload_nsys_report,
+    upload_nsys_reports,
     reorder_columns_in_raw_csv,
     extract_ncu_values_from_raws,
     calculate_roofline_for_ncu_raw_csvs,
@@ -69,7 +69,7 @@ __all__ = [
     "get_functions_from_ctags_table",
     "extract_ncu_values_from_details",
     "load_ncu_report",
-    "upload_nsys_report",
+    "upload_nsys_reports",
     "reorder_columns_in_raw_csv",
     "extract_ncu_values_from_raws",
     "calculate_roofline_for_ncu_raw_csvs",
