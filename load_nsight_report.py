@@ -193,6 +193,15 @@ def _extract_csv_from_nsys_cli_output(
             continue
         elif line.find("Generating SQLite file") != -1:
             continue
+        # The following may occur when reading nvtx_gpu_proj_trace
+        elif line.find("NOTICE: Existing SQLite export found:") != -1:
+            continue
+        elif (
+            line.find("It is assumed file was previously exported from:") != -1
+        ):
+            continue
+        elif line.find("Consider using --force-export=true if needed.") != -1:
+            continue
         else:
             # print(line)
             # result.append(line.split(","))
@@ -204,24 +213,25 @@ def _extract_csv_from_nsys_cli_output(
     cr = csv.reader(raw_csv_lines, skipinitialspace=True)
     csv_rows: "list[list[str]]" = [*cr]
 
-    # Add pretty name and HET_ID
+    # Add pretty name and HET_ID if the table has the "Kernel Name" column
     header = csv_rows[0]
-    kernel_name_col_idx = header.index("Kernel Name")
-    header.append("Pretty Name")
-    header.append("HET_ID")
-    het_id = 0
-    for row in csv_rows[1:]:
-        kernel_name = row[kernel_name_col_idx]
-        pretty_name = prettify_name_from_func_signature(kernel_name)
-        row.append(pretty_name)
-        if (
-            classify_het_kernel_func is not None
-            and classify_het_kernel_func(pretty_name) != "Non-HET Others"
-        ):
-            row.append(str(het_id))
-            het_id += 1
-        else:
-            row.append("")
+    if "Kernel Name" in header:
+        kernel_name_col_idx = header.index("Kernel Name")
+        header.append("Pretty Name")
+        header.append("HET_ID")
+        het_id = 0
+        for row in csv_rows[1:]:
+            kernel_name = row[kernel_name_col_idx]
+            pretty_name = prettify_name_from_func_signature(kernel_name)
+            row.append(pretty_name)
+            if (
+                classify_het_kernel_func is not None
+                and classify_het_kernel_func(pretty_name) != "Non-HET Others"
+            ):
+                row.append(str(het_id))
+                het_id += 1
+            else:
+                row.append("")
 
     return csv_rows
 

@@ -103,3 +103,21 @@ if __name__ == "__main__":
             )
         )[0:2]
     )
+
+    print(
+        load_nsys_report(
+            os.path.join(
+                get_path_to_test_dir(), "graphiler_hgt_fb15k.nsys-rep"
+            ),
+            "cuda_gpu_trace",
+        )
+    )
+
+    print(
+        load_nsys_report(
+            os.path.join(
+                get_path_to_test_dir(), "graphiler_hgt_fb15k.nsys-rep"
+            ),
+            "cuda_gpu_trace,nvtx_sum,osrt_sum,cuda_api_sum,cuda_gpu_kern_sum,cuda_gpu_mem_size_sum,cuda_gpu_mem_time_sum",
+        )
+    )

@@ -43,9 +43,9 @@ def calc_avg_sm_metrics(
     )
 
     sm_active_ns_product: float = 0.0
-    # The for loop is cut into two parts: notice that collection_start < start or end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx-1))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx-1), we always get start < collection_start < collection-end < end
+    # The for loop is cut into two parts: notice that collection_start < start or end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx), we always get start < collection_start < collection-end < end
     for row_idx in set(range(lhs_row_idx, rhs_row_idx)).difference(
-        set(range(lhs_row_idx + 1, rhs_row_idx - 1))
+        set(range(lhs_row_idx + 1, rhs_row_idx))
     ):
         # rhs_row_idx won't be included because its start timestamp is no less than end_timestamp
         if (
@@ -75,8 +75,14 @@ def calc_avg_sm_metrics(
             ) * df[metric_name][row_idx]
         else:
             # start < collection_start < collection_end < end
+            print(
+                start_timestamp,
+                df["rawTimestamp"][row_idx],
+                df["rawTimestamp"][row_idx] + collection_cycle_ns,
+                end_timestamp,
+            )
             raise ValueError("This case should not happen")
-    for row_idx in range(lhs_row_idx + 1, rhs_row_idx - 1):
+    for row_idx in range(lhs_row_idx + 1, rhs_row_idx):
         # start < collection_start < collection_end < end
         sm_active_ns_product += collection_cycle_ns * df[metric_name][row_idx]
     return sm_active_ns_product / (end_timestamp - start_timestamp)
@@ -96,6 +102,7 @@ def get_last_nvtx_range(
         filepath, "nvtx_gpu_proj_trace", lambda x: ""  # dummy filter function
     )
     header = nvtx_ranges[0]
+    print(header)
     name_idx = header.index("Name")
     # TODO: check if we need to use Orig instead of Projected
     start_idx = header.index("Projected Start (ns)")

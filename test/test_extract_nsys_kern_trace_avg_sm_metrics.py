@@ -4,6 +4,7 @@ if __name__ == "__main__":
         get_last_nvtx_range,
         calc_avg_sm_metrics,
         get_kern_trace_overhead,
+        load_raw_gpu_metric_util_report,
     )
     import os
     from .utils import is_pwd_correct_for_testing, get_path_to_test_dir
@@ -19,4 +20,8 @@ if __name__ == "__main__":
         "graphiler.fb15k_HGT.bg.breakdown.with.sm.traces.nsys-rep",
     )
 
+    df = load_raw_gpu_metric_util_report(file_path)
+
     start, duration = get_last_nvtx_range(file_path)
+    print(start, duration)
+    print(calc_avg_sm_metrics(df, start, start + duration))
