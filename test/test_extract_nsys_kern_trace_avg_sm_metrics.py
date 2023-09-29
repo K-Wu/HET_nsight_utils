@@ -23,5 +23,5 @@ if __name__ == "__main__":
     df = load_raw_gpu_metric_util_report(file_path)
 
     start, duration = get_last_nvtx_range(file_path)
-    print(start, duration)
+    print(start, start + duration)
     print(calc_avg_sm_metrics(df, start, start + duration))

@@ -36,7 +36,6 @@ def calc_avg_sm_metrics(
         else df["rawTimestamp"].searchsorted(start_timestamp) - 1
     )
     rhs_row_idx = df["rawTimestamp"].searchsorted(end_timestamp)
-
     # rhs should be larger than lhs
     collection_cycle_ns = (
         df["rawTimestamp"][rhs_row_idx] - df["rawTimestamp"][lhs_row_idx] + 0.0
@@ -44,9 +43,9 @@ def calc_avg_sm_metrics(
 
     # TODO: the second range should be rhs_row_idx - 1
     sm_active_ns_product: float = 0.0
-    # The for loop is cut into two parts: notice that collection_start < start or end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx), we always get start < collection_start < collection-end < end
+    # The for loop is cut into two parts: notice that collection_start < start or end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx-1))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx-1), we always get start < collection_start < collection-end < end
     for row_idx in set(range(lhs_row_idx, rhs_row_idx)).difference(
-        set(range(lhs_row_idx + 1, rhs_row_idx))
+        set(range(lhs_row_idx + 1, rhs_row_idx - 1))
     ):
         print(df[metric_name][row_idx])
         # rhs_row_idx won't be included because its start timestamp is no less than end_timestamp
@@ -85,7 +84,7 @@ def calc_avg_sm_metrics(
             )
             raise ValueError("This case should not happen")
     # TODO: should be rhs_row_idx - 1
-    for row_idx in range(lhs_row_idx + 1, rhs_row_idx):
+    for row_idx in range(lhs_row_idx + 1, rhs_row_idx - 1):
         # start < collection_start < collection_end < end
         sm_active_ns_product += collection_cycle_ns * df[metric_name][row_idx]
     return sm_active_ns_product / (end_timestamp - start_timestamp)
