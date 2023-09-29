@@ -233,7 +233,7 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
     assert filename.endswith(".nsys-rep"), f"{filename} is not a nsys report"
     output_filename = filename[: filename.rfind(".nsys-rep")] + ".sqlite"
     if os.path.exists(output_filename):
-        LOG.error(f"{output_filename} already exists")
+        LOG.warning(f"{output_filename} already exists")
         return
     # Use read() to make the call blocking
     os.popen(f"nsys export -t sqlite -o {output_filename} {filename}").read()

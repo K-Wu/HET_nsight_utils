@@ -4,6 +4,9 @@ from .detect_pwd import (
     get_env_name_from_setup,
     create_new_results_dir,
     assert_git_exists,
+    is_generic_root_path,
+    is_pwd_generic_dev_root,
+    get_generic_root_path,
 )
 from .upload_benchmark_results import (
     ConfigCanonicalizer,
@@ -43,6 +46,12 @@ from .print_machine_info import (
     print_python_env_info,
     print_conda_envs_info,
 )
+from .extract_nsys_kern_trace_avg_sm_metrics import (
+    get_last_nvtx_range,
+    calc_avg_sm_metrics,
+    get_kern_trace_overhead,
+)
+from .nsys_metrics_report import load_raw_gpu_metric_util_report
 
 # From https://stackoverflow.com/questions/59167405/flake8-ignore-only-f401-rule-in-entire-file
 __all__ = [
@@ -81,4 +90,11 @@ __all__ = [
     "print_system_info",
     "print_python_env_info",
     "print_conda_envs_info",
+    "get_last_nvtx_range",
+    "calc_avg_sm_metrics",
+    "get_kern_trace_overhead",
+    "load_raw_gpu_metric_util_report",
+    "is_generic_root_path",
+    "is_pwd_generic_dev_root",
+    "get_generic_root_path",
 ]  # this suppresses the warning F401

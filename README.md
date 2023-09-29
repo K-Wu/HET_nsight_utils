@@ -3,3 +3,6 @@
 ## Introduction
 This repository provided utilities to 1) use shell to execute the binaries from K-Wu/CUDALibrarySamples, profile it, and extract information from the profiling results, and 2) analyze the results, e.g., compute roofline model.
 The results will be uploaded to google spreadsheet. One may set the `SPREADSHEET_URL` as the repo variable and use the `gh` utilities in detect_pwd.py to retrieve it.
+
+## What's in a name?
+This section may be used in future; now it is just a hint to python script that this is the root directory of the project.

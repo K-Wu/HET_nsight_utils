@@ -31,6 +31,7 @@ from nsys_recipe.lib import helpers
 import argparse
 import pandas
 
+
 class RawGpuMetricUtilReport(nsysstats.Report):
     """The rawTimestamp is the beginning timestamp of the collected metric. In other words, in nsys, the timeline [rawTimestamp, rawTimestamp + 1.0sec/metricCollectionFrequency] shows the metric value at rawTimestamp."""
 
@@ -43,7 +44,9 @@ WITH
             LEAD (rawTimestamp) OVER (PARTITION BY typeId) end,
             CAST(JSON_EXTRACT(data, '$.SM Active') as INT) AS smActive,
             CAST(JSON_EXTRACT(data, '$.SM Issue') as INT) AS smIssue,
-            CAST(JSON_EXTRACT(data, '$.Tensor Active') as INT) AS tensorActive
+            CAST(JSON_EXTRACT(data, '$.Tensor Active') as INT) AS tensorActive,
+            CAST(JSON_EXTRACT(data, '$.DRAM Read Throughput') as INT) AS dramRead,
+            CAST(JSON_EXTRACT(data, '$.DRAM Write Throughput') as INT) AS dramWrite
         FROM
             GENERIC_EVENTS
     )
@@ -52,6 +55,8 @@ SELECT
     smActive AS "SmActive",
     smIssue AS "SmIssue",
     tensorActive AS "TensorActive",
+    dramRead AS "DramRead",
+    dramWrite AS "DramWrite",
     gpu AS "GPU"
 FROM
     metrics
@@ -87,7 +92,7 @@ FROM
 def load_raw_gpu_metric_util_report(
     nsys_filename: str, row_limit: int = -1
 ) -> "pandas.DataFrame":
-    """Load the raw gpu metric util report from the nsys report file. row_limit is by default -1, meaning loading all rows."""
+    """Load the raw gpu metric util report from the nsys report file. row_limit is by default -1, meaning loading all rows. .sqlite is needed in the middle and is produced by extract_sqlite_from_nsys_report"""
     parsed_args = argparse.Namespace(
         rows=row_limit,
     )
@@ -97,18 +102,3 @@ def load_raw_gpu_metric_util_report(
     return helpers.stats_cls_to_df(
         db_filename, parsed_args, RawGpuMetricUtilReport
     )
-
-
-if __name__ == "__main__":
-    parsed_args = argparse.Namespace(
-        rows=-1,
-    )
-    extract_sqlite_from_nsys_report(
-        "utils/nsight_utils/test/graphiler.fb15k_RGAT.bg.breakdown.nsys-rep"
-    )
-    df = helpers.stats_cls_to_df(
-        "utils/nsight_utils/test/graphiler.fb15k_RGAT.bg.breakdown.sqlite",
-        parsed_args,
-        RawGpuMetricUtilReport,
-    )
-    print(df[df["SmActive"] > 0])

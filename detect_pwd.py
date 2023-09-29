@@ -78,3 +78,41 @@ def create_new_results_dir(prefix: str, results_dir: str) -> str:
     new_dir = os.path.join(results_dir, prefix + curr_time)
     os.makedirs(new_dir)
     return new_dir
+
+
+def is_generic_root_path(path: str, repo_title: str) -> bool:
+    try:
+        # Check if we can find title as HET in README.md
+        # File not found error during cat cannot be catched. So we use os.path.exists to check first
+        if not os.path.exists(os.path.join(path, "README.md")):
+            return False
+        res = subprocess.check_output(["cat", os.path.join(path, "README.md")])
+        res = res.decode("utf-8")
+        if "# " + repo_title in res:
+            return True
+        elif "## What's in a name?" in res:
+            raise ValueError(
+                "Fatal! Detected sub-header, What's in a name, in README.md"
+                f" but not found # {repo_title}. Is the top-level project"
+                " renamed? Please update it in the detect_pwd.py, or avoid"
+                " using the subheading in a non-top-level project."
+            )
+        return False
+    except OSError:
+        return False
+
+
+def is_pwd_generic_dev_root(repo_title: str, devpath_basename: str) -> bool:
+    """Return if pwd is get_generic_root_path({repo_title})/{devpath_basename}"""
+    return (
+        is_generic_root_path(os.path.dirname(os.getcwd()), repo_title)
+        and os.path.basename(os.getcwd()) == devpath_basename
+    )
+
+
+def get_generic_root_path(repo_title: str) -> str:
+    """Go to the root path of the git repository, and go to the parent directory until we find the root path with the specified repo_title"""
+    path = get_git_root_path()
+    while not is_generic_root_path(path, repo_title):
+        path = os.path.dirname(path)
+    return path
