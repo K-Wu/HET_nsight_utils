@@ -42,7 +42,7 @@ def calc_avg_sm_metrics(
     ) / (rhs_row_idx - lhs_row_idx)
 
     # TODO: the second range should be rhs_row_idx - 1
-    sm_active_ns_product: float = 0.0
+    sm_metric_ns_product: float = 0.0
     # The for loop is cut into two parts: notice that collection_start < start or end< collection_end could only happen when row_idx is in set(range(lhs_row_idx, rhs_row_idx)).difference(set(range(lhs_row_idx+1, rhs_row_idx-1))). For other cases, i.e., row_idx is in range(lhs_row_idx+1, rhs_row_idx-1), we always get start < collection_start < collection-end < end
     for row_idx in set(range(lhs_row_idx, rhs_row_idx)).difference(
         set(range(lhs_row_idx + 1, rhs_row_idx - 1))
@@ -59,17 +59,17 @@ def calc_avg_sm_metrics(
         if df["rawTimestamp"][row_idx] + collection_cycle_ns >= end_timestamp:
             if df["rawTimestamp"][row_idx] <= start_timestamp:
                 # collection_start < start < end < collection_end
-                sm_active_ns_product += (end_timestamp - start_timestamp) * df[
+                sm_metric_ns_product += (end_timestamp - start_timestamp) * df[
                     metric_name
                 ][row_idx]
             else:
                 # start < collection_start < end < collection_end
-                sm_active_ns_product += (
+                sm_metric_ns_product += (
                     end_timestamp - df["rawTimestamp"][row_idx]
                 ) * df[metric_name][row_idx]
         elif df["rawTimestamp"][row_idx] <= start_timestamp:
             # collection_start < start < collection_end < end
-            sm_active_ns_product += (
+            sm_metric_ns_product += (
                 df["rawTimestamp"][row_idx]
                 + collection_cycle_ns
                 - start_timestamp
@@ -86,8 +86,8 @@ def calc_avg_sm_metrics(
     # TODO: should be rhs_row_idx - 1
     for row_idx in range(lhs_row_idx + 1, rhs_row_idx - 1):
         # start < collection_start < collection_end < end
-        sm_active_ns_product += collection_cycle_ns * df[metric_name][row_idx]
-    return sm_active_ns_product / (end_timestamp - start_timestamp)
+        sm_metric_ns_product += collection_cycle_ns * df[metric_name][row_idx]
+    return sm_metric_ns_product / (end_timestamp - start_timestamp)
 
 
 def get_last_nvtx_range(
@@ -155,39 +155,37 @@ def get_last_nvtx_range(
     return last_range_start, last_range_duration
 
 
-# TODO: We assume n_warmups == 5, and n_epochs == 10, but we may in future get these parameters from arguments from the trace file
-# TODO: If the trace file does not contain the information, we could use the default values as above
-# TODO: But we need to verify the default values are correct
-# After exporting to txt/json via nsys export -t json, the first type 27 event will involve argument information, e.g.,
-# Type: 27
-# CommEvent_ {
-#   Timestamp: -290185240
-#   GlobalPid: 341157691260928
-#   NumOfCpus: 0
-#   Command: "python"
-#   WorkDir: "/home/kunww/HET/hrt"
-#   Args: "-m"
-#   Args: "python.HGT.train"
-#   Args: "-d"
-#   Args: "am"
-#   Args: "--num_layers"
-#   Args: "1"
-#   Args: "--full_graph_training"
-#   Args: "--num_classes"
-#   Args: "64"
-#   Args: "--n_infeat"
-#   Args: "64"
-#   Args: "--num_heads"
-#   Args: "1"
-#   NsTime: true
-#   EnvironId: 17
-# }
-
-
 # TODO: devise algorithm to figure out the beginning id of training, i.e., after warm up ends
 # training_beg_idx = len(kernel_instances)
 def get_kern_sum():
     raise NotImplementedError
+    # TODO: We assume n_warmups == 5, and n_epochs == 10, but we may in future get these parameters from arguments from the trace file
+    # TODO: If the trace file does not contain the information, we could use the default values as above
+    # TODO: But we need to verify the default values are correct
+    # After exporting to txt/json via nsys export -t json, the first type 27 event will involve argument information, e.g.,
+    # Type: 27
+    # CommEvent_ {
+    #   Timestamp: -290185240
+    #   GlobalPid: 341157691260928
+    #   NumOfCpus: 0
+    #   Command: "python"
+    #   WorkDir: "/home/kunww/HET/hrt"
+    #   Args: "-m"
+    #   Args: "python.HGT.train"
+    #   Args: "-d"
+    #   Args: "am"
+    #   Args: "--num_layers"
+    #   Args: "1"
+    #   Args: "--full_graph_training"
+    #   Args: "--num_classes"
+    #   Args: "64"
+    #   Args: "--n_infeat"
+    #   Args: "64"
+    #   Args: "--num_heads"
+    #   Args: "1"
+    #   NsTime: true
+    #   EnvironId: 17
+    # }
 
 
 # TODO: implement cuda_api_trace report
