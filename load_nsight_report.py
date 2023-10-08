@@ -986,7 +986,8 @@ def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
         )
     return result
 
-def load_ncu_report_just_cli_output(filename: str, page_name: str) -> "list[str]":
+
+def load_ncu_report_just_cli_output(filename: str, page_name: str) -> "str":
     """Load a report from a ncu report file."""
     assert ncu_exists(), "ncu is not installed"
     assert os.path.exists(filename), f"{filename} does not exist"
@@ -994,6 +995,13 @@ def load_ncu_report_just_cli_output(filename: str, page_name: str) -> "list[str]
         f"ncu --page {page_name} --csv  --import {filename}"
     ).read()
     return ncu_cli_output
+
+
+def load_ncu_report_just_cli_output_and_split(
+    filename: str, page_name: str
+) -> "list[str]":
+    ncu_cli_output: str = load_ncu_report_just_cli_output(filename, page_name)
+    return ncu_cli_output.split("\n")
 
 
 def load_ncu_report(filename: str, page_name: str) -> "list[list[str]]":

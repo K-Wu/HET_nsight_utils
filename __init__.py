@@ -40,7 +40,7 @@ from .load_nsight_report import (
     prettify_name_from_func_signature,
     extract_from_ncu_folder,
     extract_from_ncu_file,
-    load_ncu_report_just_cli_output,
+    load_ncu_report_just_cli_output_and_split,
 )
 from .print_machine_info import (
     print_system_info,
@@ -98,5 +98,5 @@ __all__ = [
     "is_generic_root_path",
     "is_pwd_generic_dev_root",
     "get_generic_root_path",
-    "load_ncu_report_just_cli_output",
+    "load_ncu_report_just_cli_output_and_split",
 ]  # this suppresses the warning F401
