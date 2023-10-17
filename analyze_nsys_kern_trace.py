@@ -7,6 +7,17 @@ from .load_nsight_report import (
 from typing import Union
 import pandas
 from .nsys_metrics_report import load_raw_gpu_metric_util_report
+import logging
+
+LOG = logging.getLogger(__name__)
+logging.basicConfig(
+    format=(
+        "%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d]"
+        " %(threadName)15s: %(message)s"
+    ),
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.INFO,
+)
 
 
 def calc_avg_sm_metrics(
@@ -47,7 +58,7 @@ def calc_avg_sm_metrics(
     for row_idx in set(range(lhs_row_idx, rhs_row_idx)).difference(
         set(range(lhs_row_idx + 1, rhs_row_idx - 1))
     ):
-        print(df[metric_name][row_idx])
+        # print(df[metric_name][row_idx])
         # rhs_row_idx won't be included because its start timestamp is no less than end_timestamp
         if (
             df["rawTimestamp"][row_idx] + collection_cycle_ns
@@ -76,7 +87,7 @@ def calc_avg_sm_metrics(
             ) * df[metric_name][row_idx]
         else:
             # start < collection_start < collection_end < end
-            print(
+            LOG.error(
                 start_timestamp,
                 df["rawTimestamp"][row_idx],
                 df["rawTimestamp"][row_idx] + collection_cycle_ns,
@@ -104,7 +115,7 @@ def get_last_nvtx_range(
         filepath, "nvtx_gpu_proj_trace", lambda x: ""  # dummy filter function
     )
     header = nvtx_ranges[0]
-    print(header)
+    # print(header)
     name_idx = header.index("Name")
     # TODO: check if we need to use Orig instead of Projected
     start_idx = header.index("Projected Start (ns)")
