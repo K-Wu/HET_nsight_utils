@@ -339,6 +339,7 @@ def extract_ncu_values_from_raws(
         ("dram__bytes.sum.per_second", "Tbyte/second"): ("Gbyte/second", 3),
     },
 ) -> "list[list[str]]":
+    """This function takes in ncu raw page and filters out all the metrics not specified in `raw_metrics`, and convert the units of the metrics specified in metric_unit_conversion."""
     # TODO: use to kernel_instances_metrics and to ncu_raw_csv
     header: list[str] = ncu_details_csv[0]
     units: list[str] = ncu_details_csv[1]

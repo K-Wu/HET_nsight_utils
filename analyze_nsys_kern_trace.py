@@ -276,3 +276,12 @@ def get_kern_trace_overhead(
         results_csv[-1] += list(map(str, kernel_instance[-1]))
 
     return results_csv
+
+
+def extract_kernels_grid_configs(
+    gpu_trace_rows: list[list[str]],
+) -> list[list[str]]:
+    """Extract the following columns from cuda_gpu_trace report
+    GrdX,GrdY,GrdZ,BlkX,BlkY,BlkZ,Reg/Trd,StcSMem (MB),DymSMem (MB),Strm,Name
+    """
+    raise NotImplementedError

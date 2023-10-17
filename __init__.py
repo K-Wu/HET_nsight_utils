@@ -47,7 +47,7 @@ from .print_machine_info import (
     print_python_env_info,
     print_conda_envs_info,
 )
-from .extract_nsys_kern_trace_avg_sm_metrics import (
+from .analyze_nsys_kern_trace import (
     get_last_nvtx_range,
     calc_avg_sm_metrics,
     get_kern_trace_overhead,
