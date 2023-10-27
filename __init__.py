@@ -3,6 +3,7 @@ from .detect_pwd import (
     get_git_root_path,
     get_env_name_from_setup,
     create_new_results_dir,
+    create_results_dir,
     assert_git_exists,
     is_generic_root_path,
     is_pwd_generic_dev_root,
@@ -22,6 +23,7 @@ from .upload_benchmark_results import (
     get_pretty_hostname,
     find_latest_subdirectory_or_file,
     NameCanonicalizer,
+    write_csv_to_file,
 )
 from .classify_het_kernels import (
     is_ctags_installed,
@@ -51,6 +53,7 @@ from .analyze_nsys_kern_trace import (
     get_last_nvtx_range,
     calc_avg_sm_metrics,
     get_kern_trace_overhead,
+    extract_kernels_grid_configs,
 )
 from .nsys_metrics_report import load_raw_gpu_metric_util_report
 
@@ -60,6 +63,7 @@ __all__ = [
     "get_git_root_path",
     "get_env_name_from_setup",
     "create_new_results_dir",
+    "create_results_dir",
     "assert_git_exists",
     "ConfigCanonicalizer",
     "generate_filename",
@@ -99,4 +103,6 @@ __all__ = [
     "is_pwd_generic_dev_root",
     "get_generic_root_path",
     "load_ncu_report_just_cli_output_and_split",
+    "extract_kernels_grid_configs",
+    "write_csv_to_file",
 ]  # this suppresses the warning F401

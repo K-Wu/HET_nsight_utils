@@ -290,9 +290,30 @@ def get_kern_trace_overhead(
 
 
 def extract_kernels_grid_configs(
-    gpu_trace_rows: list[list[str]],
+    nsys_filepath: str,
 ) -> list[list[str]]:
     """Extract the following columns from cuda_gpu_trace report
     GrdX,GrdY,GrdZ,BlkX,BlkY,BlkZ,Reg/Trd,StcSMem (MB),DymSMem (MB),Strm,Name
     """
-    raise NotImplementedError
+    # We use load_nsys_report rather for simplicity. If we need information from the file, we should use the per-file logic in load_from_nsys_reports_folders instead
+    kern_traces: list[list[str]] = load_nsys_report(
+        nsys_filepath, "cuda_gpu_trace", None
+    )
+    header = kern_traces[0]
+    column_index: dict[str, int] = {
+        "GrdX": header.index("GrdX"),
+        "GrdY": header.index("GrdY"),
+        "GrdZ": header.index("GrdZ"),
+        "BlkX": header.index("BlkX"),
+        "BlkY": header.index("BlkY"),
+        "BlkZ": header.index("BlkZ"),
+        "Reg/Trd": header.index("Reg/Trd"),
+        "StcSMem (MB)": header.index("StcSMem (MB)"),
+        "DymSMem (MB)": header.index("DymSMem (MB)"),
+        "Strm": header.index("Strm"),
+        "Name": header.index("Name"),
+    }
+    result_csv: list[list[str]] = [[key for key in column_index]]
+    for line in kern_traces[1:]:
+        result_csv.append([line[column_index[key]] for key in column_index])
+    return result_csv

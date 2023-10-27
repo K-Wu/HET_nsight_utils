@@ -73,16 +73,22 @@ def get_env_name_from_setup(het_root_path: str) -> str:
     )
 
 
-def create_new_results_dir(prefix: str, results_dir: str) -> str:
+def create_new_results_dir(path_to: str, results_dirname: str) -> str:
     curr_time = datetime.datetime.now().strftime("%Y%m%d%H%M")
-    new_dir = os.path.join(results_dir, prefix + curr_time)
+    new_dir = os.path.join(path_to, results_dirname + curr_time)
     if os.path.exists(new_dir):
         # Try again with seconds
         curr_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        new_dir = os.path.join(results_dir, prefix + curr_time)
+        new_dir = os.path.join(path_to, results_dirname + curr_time)
 
     # Purposefully throw error if the directory already exists
     os.makedirs(new_dir)
+    return new_dir
+
+
+def create_results_dir(path_to: str, results_dirname: str) -> str:
+    new_dir = os.path.join(path_to, results_dirname)
+    os.makedirs(new_dir, exist_ok=True)
     return new_dir
 
 
