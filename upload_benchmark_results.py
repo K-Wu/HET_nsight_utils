@@ -286,8 +286,10 @@ def generate_filename(
     return ret
 
 
-def open_worksheet(target_sheet_url: str, target_gid: str):
-    if target_gid != "0":
+def open_worksheet(
+    target_sheet_url: str, target_gid: str, assert_gid_is_zero=True
+):
+    if target_gid != "0" and assert_gid_is_zero:
         raise NotImplementedError(
             "To avoid data loss, only gid=0 is supported for now"
         )
@@ -304,6 +306,20 @@ def open_worksheet(target_sheet_url: str, target_gid: str):
     except (StopIteration, KeyError):
         raise WorksheetNotFound(target_gid)
     return ws
+
+
+def get_worksheet_gid(target_sheet_url: str, title: str):
+    gc = gspread.service_account()
+    sh = gc.open_by_url(target_sheet_url)
+    sheet_data = sh.fetch_sheet_metadata()
+    try:
+        item = finditem(
+            lambda x: str(x["properties"]["title"]) == title,
+            sheet_data["sheets"],
+        )
+        return str(item["properties"]["sheetId"])
+    except (StopIteration, KeyError):
+        raise WorksheetNotFound(title)
 
 
 def create_worksheet(

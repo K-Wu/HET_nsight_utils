@@ -22,6 +22,8 @@ from .upload_benchmark_results import (
     get_pretty_hostname,
     find_latest_subdirectory_or_file,
     NameCanonicalizer,
+    get_worksheet_gid,
+    open_worksheet,
 )
 from .classify_het_kernels import (
     is_ctags_installed,
@@ -99,4 +101,6 @@ __all__ = [
     "is_pwd_generic_dev_root",
     "get_generic_root_path",
     "load_ncu_report_just_cli_output_and_split",
+    "get_worksheet_gid",
+    "open_worksheet",
 ]  # this suppresses the warning F401
