@@ -380,7 +380,17 @@ def try_best_to_numeric(
     return new_csv_rows
 
 
-def update_gspread(entries, ws: Worksheet, cell_range=None) -> None:
+def write_csv_to_file(entries: list[list[Any]], filename: str) -> None:
+    import csv
+
+    with open(filename, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(entries)
+
+
+def update_gspread(
+    entries: list[list[Any]], ws: Worksheet, cell_range=None
+) -> None:
     if cell_range is None:
         # start from A1
         num_rows = len(entries)
