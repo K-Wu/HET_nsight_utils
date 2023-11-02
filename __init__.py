@@ -26,6 +26,8 @@ from .upload_benchmark_results import (
     get_worksheet_gid,
     open_worksheet,
     write_csv_to_file,
+    is_config_selected,
+    ask_pretty_hostname,
 )
 from .classify_het_kernels import (
     is_ctags_installed,
@@ -109,4 +111,6 @@ __all__ = [
     "open_worksheet",
     "extract_kernels_grid_configs",
     "write_csv_to_file",
+    "is_config_selected",
+    "ask_pretty_hostname",
 ]  # this suppresses the warning F401
