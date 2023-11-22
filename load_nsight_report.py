@@ -1,5 +1,6 @@
 import os
 import re
+from subprocess import PIPE, Popen
 from .run_once import run_once
 from functools import lru_cache
 import sys
@@ -258,9 +259,27 @@ def load_nsys_report(
     """Load a report from a nsys report file. The output, list[list[str]] is each cell in each row in the csv format output."""
     assert nsys_exists(), "nsys is not installed"
     assert os.path.exists(filename), f"{filename} does not exist"
-    nsys_cli_output: str = os.popen(
-        f"nsys stats -f csv -r {report_name} {filename}"
-    ).read()
+
+    p = Popen(
+        f"nsys stats -f csv -r {report_name} {filename}",
+        shell=True,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    nsys_cli_output_b: bytes
+    err_b: bytes
+    nsys_cli_output_b, err_b = p.communicate()
+    nsys_cli_output = nsys_cli_output_b.decode()
+    err = err_b.decode()
+    if (
+        err.find("Existing SQLite export found") != -1
+        and err.find("File is older than input file") != -1
+    ):
+        # Retry with force-export=true to force nsys to update the sqlite file in case the nsys report file is newer than the sqlite file
+        nsys_cli_output: str = os.popen(
+            "nsys stats -f csv -r"
+            f" {report_name} {filename} --force-export=true"
+        ).read()
     return _extract_csv_from_nsys_cli_output(
         nsys_cli_output, classify_het_kernel_func
     )

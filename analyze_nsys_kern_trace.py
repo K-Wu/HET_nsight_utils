@@ -311,6 +311,7 @@ def extract_kernels_grid_configs(
         "StcSMem (MB)": header.index("StcSMem (MB)"),
         "DymSMem (MB)": header.index("DymSMem (MB)"),
         "Strm": header.index("Strm"),
+        "Duration (ns)": header.index("Duration (ns)"),
         "Name": header.index("Name"),
     }
     result_csv: list[list[str]] = [[key for key in column_index]]
