@@ -24,6 +24,31 @@ logging.basicConfig(
 )
 
 
+def is_config_selected(info: list[str], selected_flags: list[str]) -> bool:
+    """
+    Check if the result entry, whose configurations is specified by info, is selected according to the selected flags combination specified by seleceted_flag
+    """
+
+    set_info: set[str] = set(info)
+    for flag in selected_flags:
+        if flag not in set_info:
+            return False
+
+    # Lastly, make sure empty flags in selected_flags is no more than empty flags in info
+    num_empty_flags_in_config = 0
+    num_empty_flags_in_info = 0
+    for flag in selected_flags:
+        if len(flag) == 0:
+            num_empty_flags_in_config += 1
+    for flag in info:
+        if len(flag) == 0:
+            num_empty_flags_in_info += 1
+    if num_empty_flags_in_config > num_empty_flags_in_info:
+        return False
+
+    return True
+
+
 class ConfigCanonicalizer:
     @classmethod
     def permute(cls, input_fmt: str, config: "list[str]") -> "list[str]":
@@ -58,9 +83,7 @@ class ConfigCanonicalizer:
         input_fmt: str,
         prettifier_rule: "dict[str,str]" = {
             "multiply_among_weights_first_flag": "Fusion",
-            "compact_as_of_node_flag--compact_direct_indexing_flag": (
-                "CompactDirect"
-            ),
+            "compact_as_of_node_flag--compact_direct_indexing_flag": ("CompactDirect"),
             "compact_as_of_node_flag": "Compact",
             "": "None",  # Replace null values to allow joining in Tableau
         },
@@ -83,9 +106,7 @@ class ConfigCanonicalizer:
         ax_in_idx = input_fmts.index("ax_in")
         ax_out_idx = input_fmts.index("ax_out")
         ax_head_idx = input_fmts.index("ax_head")
-        return (
-            f"{config[ax_in_idx]}.{config[ax_out_idx]}.{config[ax_head_idx]}"
-        )
+        return f"{config[ax_in_idx]}.{config[ax_out_idx]}.{config[ax_head_idx]}"
 
     # Define your own get_configs_other_than_dimensions here in subclasses
     @classmethod
@@ -139,20 +160,30 @@ class NameCanonicalizer:
         return ".".join(cls.to_list(name, input_fmt))
 
 
+def prettify_hostname(hostname: str) -> str:
+    hostname_parts = hostname.split("-")
+    if len(hostname_parts) > 2:
+        return hostname_parts[0] + "-" + hostname_parts[1] + "-" + hostname_parts[2]
+    else:
+        return hostname
+
+
 def get_pretty_hostname() -> str:
     # kwu-csl227-99-CEntosREfugee will be kwu-csl227-99
     hostname = socket.gethostname()
-    hostname_parts = hostname.split("-")
-    if len(hostname_parts) > 2:
-        return (
-            hostname_parts[0]
-            + "-"
-            + hostname_parts[1]
-            + "-"
-            + hostname_parts[2]
-        )
+    return prettify_hostname(hostname)
+
+
+def ask_pretty_hostname():
+    curr_hostname = get_pretty_hostname()
+    print(f"Current (pretty) hostname is {curr_hostname}")
+    user_input: str = input(
+        "Please specify the hostname (pretty or not) you want if it is different from the current hostname:"
+    )
+    if len(user_input) == 0:
+        return prettify_hostname(curr_hostname)
     else:
-        return hostname
+        return user_input
 
 
 def count_rows(csv_rows: "list[list[Any]]") -> int:
@@ -173,9 +204,7 @@ def find_latest_subdirectory_or_file(
     assert not (file_only and dir_only)
     candidates: list[str] = []
     for subdir_or_file in os.listdir(dirname):
-        if subdir_or_file.startswith(prefix) and subdir_or_file.endswith(
-            suffix
-        ):
+        if subdir_or_file.startswith(prefix) and subdir_or_file.endswith(suffix):
             is_file = os.path.isfile(os.path.join(dirname, subdir_or_file))
             is_dir = os.path.isdir(os.path.join(dirname, subdir_or_file))
             if file_only and not is_file:
@@ -229,9 +258,7 @@ def ask_subdirectory_or_file(
         result = candidate
         assert isinstance(result, str)
     else:
-        if user_input.startswith(
-            "///"
-        ):  # user input is a relative path to het root
+        if user_input.startswith("///"):  # user input is a relative path to het root
             assert user_input[3:].startswith(results_dir)
             user_input = os.path.relpath(user_input[3:], results_dir)
         result = os.path.join(dirname, user_input)
@@ -240,34 +267,24 @@ def ask_subdirectory_or_file(
 
 
 def ask_subdirectory(dirname: str, prefix: str, results_dir: str) -> str:
-    result = ask_subdirectory_or_file(
-        dirname, prefix, results_dir, dir_only=True
-    )
+    result = ask_subdirectory_or_file(dirname, prefix, results_dir, dir_only=True)
     return result
 
 
-def find_latest_subdirectory(
-    dirname: str, prefix: str, suffix: str = ""
-) -> str:
-    result = find_latest_subdirectory_or_file(
-        dirname, prefix, suffix, dir_only=True
-    )
+def find_latest_subdirectory(dirname: str, prefix: str, suffix: str = "") -> str:
+    result = find_latest_subdirectory_or_file(dirname, prefix, suffix, dir_only=True)
     assert result is not None, "Latest subdirectory Not found"
     return result
 
 
 def ask_file(dirname: str, prefix: str, suffix: str = "") -> str:
-    result = ask_subdirectory_or_file(
-        dirname, prefix, "", suffix, file_only=True
-    )
+    result = ask_subdirectory_or_file(dirname, prefix, "", suffix, file_only=True)
 
     return result
 
 
 def find_latest_file(dirname: str, prefix: str, suffix: str = "") -> str:
-    result = find_latest_subdirectory_or_file(
-        dirname, prefix, suffix, file_only=True
-    )
+    result = find_latest_subdirectory_or_file(dirname, prefix, suffix, file_only=True)
     assert result is not None, "Latest file Not found"
     return result
 
@@ -286,11 +303,9 @@ def generate_filename(
     return ret
 
 
-def open_worksheet(target_sheet_url: str, target_gid: str):
-    if target_gid != "0":
-        raise NotImplementedError(
-            "To avoid data loss, only gid=0 is supported for now"
-        )
+def open_worksheet(target_sheet_url: str, target_gid: str, assert_gid_is_zero=True):
+    if target_gid != "0" and assert_gid_is_zero:
+        raise NotImplementedError("To avoid data loss, only gid=0 is supported for now")
     gc = gspread.service_account()
     sh = gc.open_by_url(target_sheet_url)
     sheet_data = sh.fetch_sheet_metadata()
@@ -306,22 +321,30 @@ def open_worksheet(target_sheet_url: str, target_gid: str):
     return ws
 
 
-def create_worksheet(
-    target_sheet_url: str, title: str, retry=False
-) -> Worksheet:
+def get_worksheet_gid(target_sheet_url: str, title: str):
+    gc = gspread.service_account()
+    sh = gc.open_by_url(target_sheet_url)
+    sheet_data = sh.fetch_sheet_metadata()
+    try:
+        item = finditem(
+            lambda x: str(x["properties"]["title"]) == title,
+            sheet_data["sheets"],
+        )
+        return str(item["properties"]["sheetId"])
+    except (StopIteration, KeyError):
+        raise WorksheetNotFound(title)
+
+
+def create_worksheet(target_sheet_url: str, title: str, retry=False) -> Worksheet:
     gc = gspread.service_account()
     sh = gc.open_by_url(target_sheet_url)
     title_suffix = ""
     # when retry is True, we will ask user to specify a suffix if the title already exists
     if retry:
         while True:
-            if (title + title_suffix)[:100] in [
-                ws.title for ws in sh.worksheets()
-            ]:
+            if (title + title_suffix)[:100] in [ws.title for ws in sh.worksheets()]:
                 # ask user to specify a suffix
-                title_suffix = input(
-                    "title already exists, please specify a suffix:"
-                )
+                title_suffix = input("title already exists, please specify a suffix:")
             else:
                 break
 
@@ -343,7 +366,7 @@ def get_cell_range_from_A1(
     cell_range += gspread.utils.rowcol_to_a1(
         row_idx_beg + num_rows, col_idx_beg + num_cols
     )
-    LOG.warning(cell_range)
+    LOG.debug(cell_range)
     return cell_range
 
 
@@ -372,17 +395,13 @@ def write_csv_to_file(entries: list[list[Any]], filename: str) -> None:
         writer.writerows(entries)
 
 
-def update_gspread(
-    entries: list[list[Any]], ws: Worksheet, cell_range=None
-) -> None:
+def update_gspread(entries: list[list[Any]], ws: Worksheet, cell_range=None) -> None:
     if cell_range is None:
         # start from A1
         num_rows = len(entries)
         num_cols = max([len(row) for row in entries])
         cell_range = get_cell_range_from_A1(num_rows, num_cols)
-    ws.format(
-        cell_range, {"numberFormat": {"type": "NUMBER", "pattern": "0.0000"}}
-    )
+    ws.format(cell_range, {"numberFormat": {"type": "NUMBER", "pattern": "0.0000"}})
     ws.update(cell_range, try_best_to_numeric(entries))
     # ws.update_title("[GID0]TestTitle")
 

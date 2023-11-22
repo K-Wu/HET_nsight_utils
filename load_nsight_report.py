@@ -464,6 +464,7 @@ def derive_rooflines(
     metrics_and_units.add(("Compute Roofline", "GFLOPs"))
     metrics_and_units.add(("DRAM Roofline", "Gbyte/second"))
     metrics_and_units.add(("DRAM Achieved Traffic", "Gbyte/second"))
+    metrics_and_units.add(("Arithmetic Intensity", "FLOPs/byte"))
 
     for kernel_identifier in kernel_instances_metrics:
         # Achieved work
@@ -518,6 +519,7 @@ def derive_rooflines(
             kernel_instances_metrics[kernel_identifier],
             ("dram__bytes.sum.peak_sustained", "byte/cycle"),
         )
+        # TODO: Convert the units before hand using canonicalize_unit
         if dram_peak_bandwidth == 0.0:  # A100 special handling
             dram_peak_bandwidth = (
                 get_float_metric_or_zero(
@@ -548,6 +550,15 @@ def derive_rooflines(
         kernel_instances_metrics[kernel_identifier][
             ("DRAM Achieved Traffic", "Gbyte/second")
         ] = str(dram_achieved_traffic)
+
+        arithmetic_intensity = (
+            # GFLOPs / (GByte/s)
+            (flop_per_cycle * sm_cycle_per_nano_second)
+            / dram_achieved_traffic
+        )
+        kernel_instances_metrics[kernel_identifier][
+            ("Arithmetic Intensity", "FLOPs/byte")
+        ] = str(arithmetic_intensity)
 
 
 UNITS_TO_EXPONENTIAL: dict[str, int] = {
@@ -924,6 +935,7 @@ def extract_ncu_values_from_details(
         "Elapsed Cycles",
         "Issued Warp Per Scheduler",  # unit: ""
         "Compute (SM) Throughput",  # unit: "%"
+        "Theoretical Occupancy",
         "Achieved Occupancy",  # unit: "%"
         "Achieved Active Warps Per SM",  # unit: "warp"
         "Executed Ipc Active",  # unit: "inst/cycle"
