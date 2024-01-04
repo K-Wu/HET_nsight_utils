@@ -77,7 +77,7 @@ def get_nsysstats_package_path() -> str:
     return package_path
 
 
-def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
+def extract_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
     # ncu output is multiline csv where each cell value is wrapped by double quotes.
     # We need to remove the double quotes and split the string by comma.
     result: list[list[str]] = []
@@ -99,7 +99,7 @@ def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
     return result
 
 
-def load_from_nsys_reports_folders(
+def extract_csv_from_nsys_folder(
     subdir_path: str,
     nsys_report_name: str,
     classify_het_kernel_func: Callable[[str], str],
@@ -108,9 +108,9 @@ def load_from_nsys_reports_folders(
     raw_csvs: list[list[list[str]]] = []
     for filename in os.listdir(subdir_path):
         if filename.endswith(".nsys-rep"):
-            # For each .nsys-rep file, load the csv (load_nsys_report) and extract information from the filename.
+            # For each .nsys-rep file, load the csv (extract_csv_from_nsys_file) and extract information from the filename.
             LOG.info(f"extract Processing {filename}")
-            curr_csv: list[list[str]] = load_nsys_report(
+            curr_csv: list[list[str]] = extract_csv_from_nsys_file(
                 os.path.join(subdir_path, filename),
                 nsys_report_name,
                 classify_het_kernel_func,
@@ -226,7 +226,7 @@ def _extract_csv_from_nsys_cli_output(
     return csv_rows
 
 
-def extract_sqlite_from_nsys_report(filename: str) -> None:
+def export_sqlite_from_nsys(filename: str) -> None:
     """Extract sqlite from nsys report file."""
     assert nsys_exists(), "nsys is not installed"
     assert os.path.exists(filename), f"{filename} does not exist"
@@ -240,7 +240,7 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
     return
 
 
-def load_nsys_report(
+def extract_csv_from_nsys_file(
     filename: str,
     report_name: str,
     classify_het_kernel_func: Union[Callable[[str], str], None],
@@ -294,7 +294,7 @@ def load_ncu_report_just_cli_output_and_split(
 def load_ncu_report(filename: str, page_name: str) -> "list[list[str]]":
     """Load a report from a ncu report file."""
     ncu_cli_output = load_ncu_report_just_cli_output(filename, page_name)
-    return load_csv_from_multiline_string(ncu_cli_output)
+    return extract_csv_from_multiline_string(ncu_cli_output)
 
 
 NCU_DETAILS_COLUMN_IDX: "dict[str, int]" = {
@@ -946,7 +946,7 @@ def extract_info_from_ncu(file_path: str) -> "list[str]":
     )
 
 
-def extract_from_ncu_file(
+def extract_csv_from_ncu_file(
     file_path: str,
     extract_details_flag: bool,
     extract_roofline_flag: bool,
@@ -1020,7 +1020,7 @@ def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
     return True
 
 
-def extract_from_ncu_folder(
+def extract_csv_from_ncu_folder(
     path: str,
     extract_details_flag: bool,
     extract_roofline_flag: bool,
@@ -1029,10 +1029,10 @@ def extract_from_ncu_folder(
     raw_csvs: list[list[list[str]]] = []
     len_info_from_filename: int = -1
     for filename in os.listdir(path):
-        LOG.info(f"extract_from_ncu_folder Processing {filename}")
+        LOG.info(f"extract_csv_from_ncu_folder Processing {filename}")
         if filename.endswith(".ncu-rep"):
             raw_csvs.append(
-                extract_from_ncu_file(
+                extract_csv_from_ncu_file(
                     os.path.join(path, filename),
                     extract_details_flag,
                     extract_roofline_flag,
@@ -1057,7 +1057,7 @@ def upload_nsys_reports(
     classify_het_kernel_func: Callable[[str], str],
     filename_fmt: str,
 ):
-    csv_rows: list[list[str]] = load_from_nsys_reports_folders(
+    csv_rows: list[list[str]] = extract_csv_from_nsys_folder(
         subdir_path,
         nsys_report_name,
         classify_het_kernel_func,

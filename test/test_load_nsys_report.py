@@ -1,6 +1,8 @@
 if __name__ == "__main__":
-    from .. import load_nsys_report as general_load_nsys_report
-    from .. import consolidate_ncu_details as general_consolidate_ncu_details
+    from .. import (
+        extract_csv_from_nsys_file as generic_extract_csv_from_nsys_file,
+    )
+    from .. import consolidate_ncu_details as generic_consolidate_ncu_details
     from .. import (
         extract_ncu_values_from_details,
         reorder_columns_in_raw_csv,
@@ -51,15 +53,15 @@ if __name__ == "__main__":
         else:
             return "Non-HET Others"
 
-    def load_nsys_report(filename: str, report_name: str):
-        return general_load_nsys_report(
+    def extract_csv_from_nsys_file(filename: str, report_name: str):
+        return generic_extract_csv_from_nsys_file(
             filename, report_name, classify_het_kernel
         )
 
     def consolidate_ncu_details(
         metric_per_row: "list[list[str]]",
     ) -> "list[list[str]]":
-        return general_consolidate_ncu_details(
+        return generic_consolidate_ncu_details(
             metric_per_row, classify_het_kernel
         )
 
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     )
 
     print(
-        load_nsys_report(
+        extract_csv_from_nsys_file(
             os.path.join(
                 get_path_to_test_dir(), "graphiler_hgt_fb15k.nsys-rep"
             ),
@@ -114,7 +116,7 @@ if __name__ == "__main__":
     )
 
     print(
-        load_nsys_report(
+        extract_csv_from_nsys_file(
             os.path.join(
                 get_path_to_test_dir(), "graphiler_hgt_fb15k.nsys-rep"
             ),

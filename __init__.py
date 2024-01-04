@@ -41,11 +41,11 @@ from .load_nsight_report import (
     reorder_columns_in_raw_csv,
     extract_ncu_values_from_raws,
     calculate_roofline_for_ncu_raw_csvs,
-    load_nsys_report,
+    extract_csv_from_nsys_file,
     consolidate_ncu_details,
     prettify_name_from_func_signature,
-    extract_from_ncu_folder,
-    extract_from_ncu_file,
+    extract_csv_from_ncu_folder,
+    extract_csv_from_ncu_file,
     load_ncu_report_just_cli_output_and_split,
 )
 from .print_machine_info import (
@@ -59,7 +59,7 @@ from .analyze_nsys_kern_trace import (
     get_kern_trace_overhead,
     extract_kernels_grid_configs,
 )
-from .nsys_metrics_report import load_raw_gpu_metric_util_report
+from .retrieve_nsys_sm_metrics import load_raw_gpu_metric_util_report
 
 # From https://stackoverflow.com/questions/59167405/flake8-ignore-only-f401-rule-in-entire-file
 __all__ = [
@@ -91,11 +91,11 @@ __all__ = [
     "reorder_columns_in_raw_csv",
     "extract_ncu_values_from_raws",
     "calculate_roofline_for_ncu_raw_csvs",
-    "load_nsys_report",
+    "extract_csv_from_nsys_file",
     "consolidate_ncu_details",
     "prettify_name_from_func_signature",
-    "extract_from_ncu_folder",
-    "extract_from_ncu_file",
+    "extract_csv_from_ncu_folder",
+    "extract_csv_from_ncu_file",
     "print_system_info",
     "print_python_env_info",
     "print_conda_envs_info",

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Callable
 from .load_nsight_report import (
     prettify_name_from_func_signature,
-    load_nsys_report,
+    extract_csv_from_nsys_file,
 )
 from typing import Union
 import pandas
@@ -111,7 +111,7 @@ def get_last_nvtx_range(
     Skip the region check if pushpop_region_name is None.
     In our baseline measurement, "graphiler" is the message in nvtx.annotate() context, i.e., the pushpop_region_name.
     """
-    nvtx_ranges: list[list[str]] = load_nsys_report(
+    nvtx_ranges: list[list[str]] = extract_csv_from_nsys_file(
         filepath, "nvtx_gpu_proj_trace", lambda x: ""  # dummy filter function
     )
     header = nvtx_ranges[0]
@@ -210,8 +210,8 @@ def get_kern_trace_overhead(
         filepath, -1
     )
     report_name: str = "cuda_api_trace" if API_flag else "cuda_gpu_trace"
-    # We use load_nsys_report rather for simplicity. If we need information from the file, we should use the per-file logic in load_from_nsys_reports_folders instead
-    kern_traces: list[list[str]] = load_nsys_report(
+    # We use extract_csv_from_nsys_file rather for simplicity. If we need information from the file, we should use the per-file logic in extract_csv_from_nsys_folder instead
+    kern_traces: list[list[str]] = extract_csv_from_nsys_file(
         filepath, report_name, classify_het_kernel_func
     )
     header = kern_traces[0]
@@ -295,8 +295,8 @@ def extract_kernels_grid_configs(
     """Extract the following columns from cuda_gpu_trace report
     GrdX,GrdY,GrdZ,BlkX,BlkY,BlkZ,Reg/Trd,StcSMem (MB),DymSMem (MB),Strm,Name
     """
-    # We use load_nsys_report rather for simplicity. If we need information from the file, we should use the per-file logic in load_from_nsys_reports_folders instead
-    kern_traces: list[list[str]] = load_nsys_report(
+    # We use extract_csv_from_nsys_file rather for simplicity. If we need information from the file, we should use the per-file logic in extract_csv_from_nsys_folder instead
+    kern_traces: list[list[str]] = extract_csv_from_nsys_file(
         nsys_filepath, "cuda_gpu_trace", None
     )
     header = kern_traces[0]
