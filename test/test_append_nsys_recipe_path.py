@@ -9,4 +9,4 @@ if __name__ == "__main__":
 
     print(nsys_recipe)
 
-    from ..nsys_metrics_report import GpuMetricUtilReport
+    from ..retrieve_nsys_sm_metrics import GpuMetricUtilReport
