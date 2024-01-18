@@ -32,110 +32,18 @@ logging.basicConfig(
 )
 
 
-def simple_combine_nsys_csvs(
-    raw_csvs: list[list[list[str]]],
-) -> "list[list[str]]":
-    """
-    This function asserts headers are the same for all csvs, and keep only one header and merge the bodies of all csvs.
-    """
-    assert len(raw_csvs) > 0, "raw_csvs must not be empty"
-    header = raw_csvs[0][0]
-    for csv in raw_csvs:
-        assert csv[0] == header, "Headers must be the same for all csvs"
-    return [header] + [item for sublist in raw_csvs for item in sublist[1:]]
-
-
-def _extract_info_from_file(
-    file_path: str,
-    suffix: str,
-    canonicalize_to_str: Callable[[str], list[str]],
-) -> "list[str]":
-    file_path = os.path.basename(file_path)
-    return canonicalize_to_str(file_path[: file_path.rfind(suffix)])
-
-
-def extract_info_from_nsys(
-    file_path: str,
-    fmt: str = "model.dataset.flag_mul.flag_compact.ax_in.ax_out.ax_head",
-) -> "list[str]":
-    # model_name.dataset_name.mul_flag.compact_flag.nsys-rep.ax_in.ax_out.ax_head
-    return _extract_info_from_file(
-        file_path,
-        ".nsys-rep",
-        lambda x: NameCanonicalizer.to_list(x, fmt),
-    )
-
-
-def load_from_nsys_reports_folders(
-    subdir_path: str,
-    nsys_report_name: str,
-    classify_het_kernel_func: Callable[[str], str],
-    extract_info_from_nsys_filename: Callable[[str], list[str]],
-) -> "list[list[str]]":
-    raw_csvs: list[list[list[str]]] = []
-    for filename in os.listdir(subdir_path):
-        if filename.endswith(".nsys-rep"):
-            # For each .nsys-rep file, load the csv (load_nsys_report) and extract information from the filename.
-            LOG.info(f"extract Processing {filename}")
-            curr_csv: list[list[str]] = load_nsys_report(
-                os.path.join(subdir_path, filename),
-                nsys_report_name,
-                classify_het_kernel_func,
-            )
-            info_from_filename: list[str] = extract_info_from_nsys_filename(
-                filename
-            )
-            curr_csv = [info_from_filename + row for row in curr_csv]
-            # For info from filename, Set INFO[idx] as the column names in header row
-            for idx_col in range(len(info_from_filename)):
-                curr_csv[0][idx_col] = f"INFO[{idx_col}]"
-            raw_csvs.append(curr_csv)
-
-    # Combine all csvs into one
-    # csv_rows = [item for sublist in raw_csvs for item in sublist]
-    csv_rows: list[list[str]] = simple_combine_nsys_csvs(raw_csvs)
-    # print(csv_rows)
-    return csv_rows
-
-
-def upload_nsys_reports(
-    subdir_path: str,
-    nsys_report_name: str,
-    spreadsheet_url: str,
-    classify_het_kernel_func: Callable[[str], str],
-    filename_fmt: str,
-):
-    csv_rows: list[list[str]] = load_from_nsys_reports_folders(
-        subdir_path,
-        nsys_report_name,
-        classify_het_kernel_func,
-        lambda filename: extract_info_from_nsys(filename, filename_fmt),
-    )
-
-    # Create worksheet
-    worksheet_title = f"[{get_pretty_hostname()}]{subdir_path.split('/')[-1]}"[
-        :100
-    ]
-    try:
-        worksheet = create_worksheet(spreadsheet_url, worksheet_title)
-    except Exception as e:
-        LOG.error(f"Failed to create worksheet: {e}")
-        LOG.error(traceback.format_exc())
-        sys.exit(1)
-
-    # Upload
-    try:
-        update_gspread(csv_rows, worksheet)
-    except Exception as e:
-        LOG.error(f"Failed to upload ncu results: {e}")
-        LOG.error(traceback.format_exc())
-
-
 @lru_cache(maxsize=None)
 @run_once
 def nsys_exists() -> bool:
     """Check if nsys is installed."""
     return os.system("nsys --version >/dev/null 2>/dev/null") == 0
+
+
+@lru_cache(maxsize=None)
+@run_once
+def ncu_exists() -> bool:
+    """Check if ncu is installed."""
+    return os.system("ncu --version >/dev/null 2>/dev/null") == 0
 
 
 @lru_cache(maxsize=None)
@@ -169,11 +77,92 @@ def get_nsysstats_package_path() -> str:
     return package_path
 
 
-@lru_cache(maxsize=None)
-@run_once
-def ncu_exists() -> bool:
-    """Check if ncu is installed."""
-    return os.system("ncu --version >/dev/null 2>/dev/null") == 0
+def extract_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
+    # ncu output is multiline csv where each cell value is wrapped by double quotes.
+    # We need to remove the double quotes and split the string by comma.
+    result: list[list[str]] = []
+    lines: list[str] = csv_string.split("\n")
+    for line in lines:
+        line: str = line.strip()
+        if len(line) == 0:
+            continue
+        elif line.startswith('"'):
+            if line.endswith('"'):
+                result.append(line[1:-1].split('","'))
+            elif line.endswith('",'):
+                result.append(line[1:-2].split('","'))
+            continue
+
+        LOG.warning(
+            f'line does not start with " or end with " skipping: {line}'
+        )
+    return result
+
+
+def extract_csv_from_nsys_folder(
+    subdir_path: str,
+    nsys_report_name: str,
+    classify_het_kernel_func: Callable[[str], str],
+    extract_info_from_nsys_filename: Callable[[str], list[str]],
+) -> "list[list[str]]":
+    raw_csvs: list[list[list[str]]] = []
+    for filename in os.listdir(subdir_path):
+        if filename.endswith(".nsys-rep"):
+            # For each .nsys-rep file, load the csv (extract_csv_from_nsys_file) and extract information from the filename.
+            LOG.info(f"extract Processing {filename}")
+            curr_csv: list[list[str]] = extract_csv_from_nsys_file(
+                os.path.join(subdir_path, filename),
+                nsys_report_name,
+                classify_het_kernel_func,
+            )
+            info_from_filename: list[str] = extract_info_from_nsys_filename(
+                filename
+            )
+            curr_csv = [info_from_filename + row for row in curr_csv]
+            # For info from filename, Set INFO[idx] as the column names in header row
+            for idx_col in range(len(info_from_filename)):
+                curr_csv[0][idx_col] = f"INFO[{idx_col}]"
+            raw_csvs.append(curr_csv)
+
+    # Combine all csvs into one
+    # csv_rows = [item for sublist in raw_csvs for item in sublist]
+    csv_rows: list[list[str]] = simple_combine_nsys_csvs(raw_csvs)
+    # print(csv_rows)
+    return csv_rows
+
+
+def simple_combine_nsys_csvs(
+    raw_csvs: list[list[list[str]]],
+) -> "list[list[str]]":
+    """
+    This function asserts headers are the same for all csvs, and keep only one header and merge the bodies of all csvs.
+    """
+    assert len(raw_csvs) > 0, "raw_csvs must not be empty"
+    header = raw_csvs[0][0]
+    for csv in raw_csvs:
+        assert csv[0] == header, "Headers must be the same for all csvs"
+    return [header] + [item for sublist in raw_csvs for item in sublist[1:]]
+
+
+def _extract_info_from_file(
+    file_path: str,
+    suffix: str,
+    canonicalize_to_str: Callable[[str], list[str]],
+) -> "list[str]":
+    file_path = os.path.basename(file_path)
+    return canonicalize_to_str(file_path[: file_path.rfind(suffix)])
+
+
+def extract_info_from_nsys(
+    file_path: str,
+    fmt: str = "model.dataset.flag_mul.flag_compact.ax_in.ax_out.ax_head",
+) -> "list[str]":
+    # model_name.dataset_name.mul_flag.compact_flag.nsys-rep.ax_in.ax_out.ax_head
+    return _extract_info_from_file(
+        file_path,
+        ".nsys-rep",
+        lambda x: NameCanonicalizer.to_list(x, fmt),
+    )
 
 
 def _extract_csv_from_nsys_cli_output(
@@ -237,7 +226,7 @@ def _extract_csv_from_nsys_cli_output(
     return csv_rows
 
 
-def extract_sqlite_from_nsys_report(filename: str) -> None:
+def export_sqlite_from_nsys(filename: str) -> None:
     """Extract sqlite from nsys report file."""
     assert nsys_exists(), "nsys is not installed"
     assert os.path.exists(filename), f"{filename} does not exist"
@@ -251,7 +240,7 @@ def extract_sqlite_from_nsys_report(filename: str) -> None:
     return
 
 
-def load_nsys_report(
+def extract_csv_from_nsys_file(
     filename: str,
     report_name: str,
     classify_het_kernel_func: Union[Callable[[str], str], None],
@@ -283,6 +272,29 @@ def load_nsys_report(
     return _extract_csv_from_nsys_cli_output(
         nsys_cli_output, classify_het_kernel_func
     )
+
+
+def load_ncu_report_just_cli_output(filename: str, page_name: str) -> "str":
+    """Load a report from a ncu report file."""
+    assert ncu_exists(), "ncu is not installed"
+    assert os.path.exists(filename), f"{filename} does not exist"
+    ncu_cli_output: str = os.popen(
+        f"ncu --page {page_name} --csv  --import {filename}"
+    ).read()
+    return ncu_cli_output
+
+
+def load_ncu_report_just_cli_output_and_split(
+    filename: str, page_name: str
+) -> "list[str]":
+    ncu_cli_output: str = load_ncu_report_just_cli_output(filename, page_name)
+    return ncu_cli_output.split("\n")
+
+
+def load_ncu_report(filename: str, page_name: str) -> "list[list[str]]":
+    """Load a report from a ncu report file."""
+    ncu_cli_output = load_ncu_report_just_cli_output(filename, page_name)
+    return extract_csv_from_multiline_string(ncu_cli_output)
 
 
 NCU_DETAILS_COLUMN_IDX: "dict[str, int]" = {
@@ -519,7 +531,7 @@ def derive_rooflines(
             kernel_instances_metrics[kernel_identifier],
             ("dram__bytes.sum.peak_sustained", "byte/cycle"),
         )
-        # TODO: Convert the units before hand using canonicalize_unit
+        # TODO: Convert the units before hand using canonicalize_unit in unit_converters.py
         if dram_peak_bandwidth == 0.0:  # A100 special handling
             dram_peak_bandwidth = (
                 get_float_metric_or_zero(
@@ -559,21 +571,6 @@ def derive_rooflines(
         kernel_instances_metrics[kernel_identifier][
             ("Arithmetic Intensity", "FLOPs/byte")
         ] = str(arithmetic_intensity)
-
-
-UNITS_TO_EXPONENTIAL: dict[str, int] = {
-    "G": 9,
-    "M": 6,
-    "T": 12,
-    "K": 3,
-    "u": -6,
-    "n": -9,
-}
-
-EXPONENTIAL_TO_UNITS: dict[int, str] = {
-    UNITS_TO_EXPONENTIAL[key]: key for key in UNITS_TO_EXPONENTIAL
-}
-EXPONENTIAL_TO_UNITS[0] = ""
 
 
 def derive_kernel_categories(
@@ -846,84 +843,6 @@ def combine_ncu_raw_csvs(
     return results
 
 
-def unit_to_str(
-    exponential: int, nominator: "list[str]", denominator: "list[str]"
-) -> str:
-    assert len(nominator) <= 1, f"nominator = {nominator} is not a single unit"
-    assert (
-        len(denominator) <= 1
-    ), f"denominator = {denominator} is not a single unit"
-    nominator_str = "" if len(nominator) == 0 else nominator[0]
-    if len(denominator) == 0:
-        return EXPONENTIAL_TO_UNITS[exponential] + nominator_str
-    else:
-        return (
-            EXPONENTIAL_TO_UNITS[exponential]
-            + nominator_str
-            + "/"
-            + denominator[0]
-        )
-
-
-def mul_two_units(lhs: str, rhs: str) -> str:
-    # mul_two_units("cycle/nsecond", "Kbyte/cycle") = "Tbyte/second"
-    return unit_to_str(
-        *_mul_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs))
-    )
-
-
-def canonicalize_unit(unit: str) -> tuple[int, "list[str]", "list[str]"]:
-    # extract exponential, numerator, denominator from unit
-    if len(unit.split("/")) > 1:
-        numerator = canonicalize_unit(unit.split("/")[0])
-        denominator = canonicalize_unit(unit.split("/")[1])
-        return _div_two_units(numerator, denominator)
-    exponential = 0
-    if unit[0] in UNITS_TO_EXPONENTIAL:
-        exponential += UNITS_TO_EXPONENTIAL[unit[0]]
-    return exponential, [unit[1:]], []
-
-
-def _simplify_unit_fraction(
-    nominator: "list[str]", denominator: "list[str]"
-) -> tuple["list[str]", "list[str]"]:
-    # simplify the fraction
-    for idx in range(len(nominator)):
-        if nominator[idx] in denominator:
-            nominator[idx] = ""
-            denominator[denominator.index(nominator[idx])] = ""
-    nominator = [ele for ele in nominator if len(ele) > 0]
-    denominator = [ele for ele in denominator if len(ele) > 0]
-    return nominator, denominator
-
-
-def _div_two_units(
-    lhs: tuple[int, "list[str]", "list[str]"],
-    rhs: tuple[int, "list[str]", "list[str]"],
-) -> tuple[int, "list[str]", "list[str]"]:
-    nominator = lhs[1] + rhs[2]
-    denominator = rhs[1] + lhs[2]
-    nominator, denominator = _simplify_unit_fraction(nominator, denominator)
-    return lhs[0] - rhs[0], nominator, denominator
-
-
-def _mul_two_units(
-    lhs: tuple[int, "list[str]", "list[str]"],
-    rhs: tuple[int, "list[str]", "list[str]"],
-) -> tuple[int, "list[str]", "list[str]"]:
-    nominator = lhs[1] + rhs[1]
-    denominator = rhs[2] + lhs[2]
-    nominator, denominator = _simplify_unit_fraction(nominator, denominator)
-    return lhs[0] + rhs[0], nominator, denominator
-
-
-def div_two_units(lhs: str, rhs: str) -> str:
-    # div_two_units("Tbyte", "cycle/nsecond") = "Kbyte/cycle"
-    return unit_to_str(
-        *_div_two_units(canonicalize_unit(lhs), canonicalize_unit(rhs))
-    )
-
-
 def extract_ncu_values_from_details(
     ncu_details_csv: "list[list[str]]",
     metric_names: "set[str]" = {
@@ -997,51 +916,6 @@ def extract_ncu_values_from_details(
     return results
 
 
-def load_csv_from_multiline_string(csv_string: str) -> "list[list[str]]":
-    # ncu output is multiline csv where each cell value is wrapped by double quotes.
-    # We need to remove the double quotes and split the string by comma.
-    result: list[list[str]] = []
-    lines: list[str] = csv_string.split("\n")
-    for line in lines:
-        line: str = line.strip()
-        if len(line) == 0:
-            continue
-        elif line.startswith('"'):
-            if line.endswith('"'):
-                result.append(line[1:-1].split('","'))
-            elif line.endswith('",'):
-                result.append(line[1:-2].split('","'))
-            continue
-
-        LOG.warning(
-            f'line does not start with " or end with " skipping: {line}'
-        )
-    return result
-
-
-def load_ncu_report_just_cli_output(filename: str, page_name: str) -> "str":
-    """Load a report from a ncu report file."""
-    assert ncu_exists(), "ncu is not installed"
-    assert os.path.exists(filename), f"{filename} does not exist"
-    ncu_cli_output: str = os.popen(
-        f"ncu --page {page_name} --csv  --import {filename}"
-    ).read()
-    return ncu_cli_output
-
-
-def load_ncu_report_just_cli_output_and_split(
-    filename: str, page_name: str
-) -> "list[str]":
-    ncu_cli_output: str = load_ncu_report_just_cli_output(filename, page_name)
-    return ncu_cli_output.split("\n")
-
-
-def load_ncu_report(filename: str, page_name: str) -> "list[list[str]]":
-    """Load a report from a ncu report file."""
-    ncu_cli_output = load_ncu_report_just_cli_output(filename, page_name)
-    return load_csv_from_multiline_string(ncu_cli_output)
-
-
 # TODO: handle the cases where <unnamed>:: or ::<unnamed>:: causes name substring after :: to be truncated
 def prettify_name_from_func_signature(func_signature: str) -> str:
     # func_signature: HET_XXX<XX,XX,XX>(XXX, XXX, XXX)
@@ -1072,30 +946,29 @@ def extract_info_from_ncu(file_path: str) -> "list[str]":
     )
 
 
-def extract_from_ncu_file(
+def extract_csv_from_ncu_file(
     file_path: str,
-    extract_mem_flag: bool,
+    extract_details_flag: bool,
     extract_roofline_flag: bool,
-    classify_het_kernel_func: Callable[[str], str],
+    classify_het_kernel_func: Union[Callable[[str], str], None],
 ) -> "list[list[str]]":
     assert file_path.endswith(".ncu-rep"), "filename must end with .ncu-rep"
     info_from_filename: list[str] = extract_info_from_ncu(file_path)
+
     func_and_metric_csvs: list[list[list[str]]] = []
-    if extract_mem_flag:
+    if extract_details_flag:
         func_and_metric_csvs.append(
-            consolidate_ncu_details(
+            consolidate_ncu_details(  # a 2d list of kernel instances by metrics
                 extract_ncu_values_from_details(
                     load_ncu_report(file_path, "details")
                 ),
                 classify_het_kernel_func,
             )
         )
+    raw_csv = extract_ncu_values_from_raws(load_ncu_report(file_path, "raw"))
     if extract_roofline_flag:
-        func_and_metric_csvs.append(
-            calculate_roofline_for_ncu_raw_csvs(
-                extract_ncu_values_from_raws(load_ncu_report(file_path, "raw"))
-            )
-        )
+        raw_csv = calculate_roofline_for_ncu_raw_csvs(raw_csv)
+    func_and_metric_csvs.append(raw_csv)
     if len(func_and_metric_csvs) == 1:
         func_and_metric = func_and_metric_csvs[0]
     else:
@@ -1115,37 +988,6 @@ def extract_from_ncu_file(
                 # Header unit row
                 results[idx_row][idx_col] = ""
     return results
-
-
-def extract_from_ncu_folder(
-    path: str,
-    extract_mem_flag: bool,
-    extract_roofline_flag: bool,
-    classify_het_kernel_func: Callable[[str], str],
-) -> "list[list[str]]":
-    raw_csvs: list[list[list[str]]] = []
-    len_info_from_filename: int = -1
-    for filename in os.listdir(path):
-        LOG.info(f"extract_from_ncu_folder Processing {filename}")
-        if filename.endswith(".ncu-rep"):
-            raw_csvs.append(
-                extract_from_ncu_file(
-                    os.path.join(path, filename),
-                    extract_mem_flag,
-                    extract_roofline_flag,
-                    classify_het_kernel_func,
-                )
-            )
-        if (
-            len(extract_info_from_ncu(filename)) != len_info_from_filename
-            and len_info_from_filename != -1
-        ):
-            raise ValueError("Number of frozen columns not consistent")
-        len_info_from_filename = len(extract_info_from_ncu(filename))
-
-    # number of frozen columns equals to the number of columns in info_from_filename and (id, pretty name, kernel name)
-    return combine_ncu_raw_csvs(len_info_from_filename + 3, raw_csvs)
-    # return [item for sublist in raw_csvs for item in sublist]
 
 
 def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
@@ -1176,3 +1018,66 @@ def check_metric_units_all_identical_from_ncu_folder(path: str) -> bool:
             )
             return False
     return True
+
+
+def extract_csv_from_ncu_folder(
+    path: str,
+    extract_details_flag: bool,
+    extract_roofline_flag: bool,
+    classify_het_kernel_func: Union[Callable[[str], str], None],
+) -> "list[list[str]]":
+    raw_csvs: list[list[list[str]]] = []
+    len_info_from_filename: int = -1
+    for filename in os.listdir(path):
+        LOG.info(f"extract_csv_from_ncu_folder Processing {filename}")
+        if filename.endswith(".ncu-rep"):
+            raw_csvs.append(
+                extract_csv_from_ncu_file(
+                    os.path.join(path, filename),
+                    extract_details_flag,
+                    extract_roofline_flag,
+                    classify_het_kernel_func,
+                )
+            )
+        if (
+            len(extract_info_from_ncu(filename)) != len_info_from_filename
+            and len_info_from_filename != -1
+        ):
+            raise ValueError("Number of frozen columns not consistent")
+        len_info_from_filename = len(extract_info_from_ncu(filename))
+
+    # number of frozen columns equals to the number of columns in info_from_filename and (id, pretty name, kernel name)
+    return combine_ncu_raw_csvs(len_info_from_filename + 3, raw_csvs)
+
+
+def upload_nsys_reports(
+    subdir_path: str,
+    nsys_report_name: str,
+    spreadsheet_url: str,
+    classify_het_kernel_func: Callable[[str], str],
+    filename_fmt: str,
+):
+    csv_rows: list[list[str]] = extract_csv_from_nsys_folder(
+        subdir_path,
+        nsys_report_name,
+        classify_het_kernel_func,
+        lambda filename: extract_info_from_nsys(filename, filename_fmt),
+    )
+
+    # Create worksheet
+    worksheet_title = f"[{get_pretty_hostname()}]{subdir_path.split('/')[-1]}"[
+        :100
+    ]
+    try:
+        worksheet = create_worksheet(spreadsheet_url, worksheet_title)
+    except Exception as e:
+        LOG.error(f"Failed to create worksheet: {e}")
+        LOG.error(traceback.format_exc())
+        sys.exit(1)
+
+    # Upload
+    try:
+        update_gspread(csv_rows, worksheet)
+    except Exception as e:
+        LOG.error(f"Failed to upload ncu results: {e}")
+        LOG.error(traceback.format_exc())

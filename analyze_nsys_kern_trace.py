@@ -2,11 +2,11 @@ from __future__ import annotations
 from typing import Callable
 from .load_nsight_report import (
     prettify_name_from_func_signature,
-    load_nsys_report,
+    extract_csv_from_nsys_file,
 )
 from typing import Union
 import pandas
-from .nsys_metrics_report import load_raw_gpu_metric_util_report
+from .retrieve_nsys_sm_metrics import load_raw_gpu_metric_util_report
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -60,7 +60,10 @@ def calc_avg_sm_metrics(
     ):
         # print(df[metric_name][row_idx])
         # rhs_row_idx won't be included because its start timestamp is no less than end_timestamp
-        if df["rawTimestamp"][row_idx] + collection_cycle_ns <= start_timestamp:
+        if (
+            df["rawTimestamp"][row_idx] + collection_cycle_ns
+            <= start_timestamp
+        ):
             continue
         if df["rawTimestamp"][row_idx] >= end_timestamp:
             continue
@@ -78,7 +81,9 @@ def calc_avg_sm_metrics(
         elif df["rawTimestamp"][row_idx] <= start_timestamp:
             # collection_start < start < collection_end < end
             sm_metric_ns_product += (
-                df["rawTimestamp"][row_idx] + collection_cycle_ns - start_timestamp
+                df["rawTimestamp"][row_idx]
+                + collection_cycle_ns
+                - start_timestamp
             ) * df[metric_name][row_idx]
         else:
             # start < collection_start < collection_end < end
@@ -106,7 +111,7 @@ def get_last_nvtx_range(
     Skip the region check if pushpop_region_name is None.
     In our baseline measurement, "graphiler" is the message in nvtx.annotate() context, i.e., the pushpop_region_name.
     """
-    nvtx_ranges: list[list[str]] = load_nsys_report(
+    nvtx_ranges: list[list[str]] = extract_csv_from_nsys_file(
         filepath, "nvtx_gpu_proj_trace", lambda x: ""  # dummy filter function
     )
     header = nvtx_ranges[0]
@@ -123,10 +128,13 @@ def get_last_nvtx_range(
     # Store the domain if it is the last domain
     if pushpop_region_name is not None:
         for event_idx, event in enumerate(nvtx_ranges[1:]):
-            if event[name_idx] == pushpop_region_name and event[style_idx] == "PushPop":
-                if last_region is None or last_region[1] < int(event[start_idx]) + int(
-                    event[duration_idx]
-                ):
+            if (
+                event[name_idx] == pushpop_region_name
+                and event[style_idx] == "PushPop"
+            ):
+                if last_region is None or last_region[1] < int(
+                    event[start_idx]
+                ) + int(event[duration_idx]):
                     last_region = (
                         int(event[start_idx]),
                         int(event[start_idx]) + int(event[duration_idx]),
@@ -142,7 +150,8 @@ def get_last_nvtx_range(
                     last_region is None
                     or last_region[1] < tentative_last_range_start
                     or last_region[0]
-                    > tentative_last_range_start + tentative_last_range_duration
+                    > tentative_last_range_start
+                    + tentative_last_range_duration
                 ):
                     continue
             last_range_idx = tentative_last_range_idx
@@ -197,10 +206,12 @@ def get_kern_trace_overhead(
     timerange: Union[tuple[int, int], None] = None,
     API_flag: bool = False,
 ) -> "list[list[str]]":
-    sm_metric_df: "pandas.DataFrame" = load_raw_gpu_metric_util_report(filepath, -1)
+    sm_metric_df: "pandas.DataFrame" = load_raw_gpu_metric_util_report(
+        filepath, -1
+    )
     report_name: str = "cuda_api_trace" if API_flag else "cuda_gpu_trace"
-    # We use load_nsys_report rather for simplicity. If we need information from the file, we should use the per-file logic in load_from_nsys_reports_folders instead
-    kern_traces: list[list[str]] = load_nsys_report(
+    # We use extract_csv_from_nsys_file rather for simplicity. If we need information from the file, we should use the per-file logic in extract_csv_from_nsys_folder instead
+    kern_traces: list[list[str]] = extract_csv_from_nsys_file(
         filepath, report_name, classify_het_kernel_func
     )
     header = kern_traces[0]
@@ -215,7 +226,9 @@ def get_kern_trace_overhead(
     assert header[start_timestamp_idx] == "Start (ns)"
     assert header[duration_idx] == "Duration (ns)"
     # "Kernel name", "CorrId", "Pretty name", "Duration (ns)", "Start timestamp (ns)", optional["Kernel type", "Avg SM active"]
-    kernel_instances: list[tuple[str, int, str, int, int, list[float | str]]] = []
+    kernel_instances: list[
+        tuple[str, int, str, int, int, list[float | str]]
+    ] = []
     for line in kern_traces[1:]:
         # Each line stores a kernel instance, i.e., launch.
         kernel_name = line[kernel_name_idx]
@@ -229,7 +242,10 @@ def get_kern_trace_overhead(
             sm_metric_df, start_timestamp, start_timestamp + duration
         )
         if timerange is not None:
-            if start_timestamp < timerange[0] or start_timestamp > timerange[1]:
+            if (
+                start_timestamp < timerange[0]
+                or start_timestamp > timerange[1]
+            ):
                 continue
         corr_id = int(line[corr_id_idx])
         if (
@@ -237,7 +253,9 @@ def get_kern_trace_overhead(
             and classify_het_kernel_func(pretty_name) == "Non-HET Others"
         ):
             continue
-        kernel_instance_tuple: tuple[str, int, str, int, int, list[float | str]] = (
+        kernel_instance_tuple: tuple[
+            str, int, str, int, int, list[float | str]
+        ] = (
             kernel_name,
             corr_id,
             pretty_name,
@@ -246,7 +264,9 @@ def get_kern_trace_overhead(
             [avg_sm_active],
         )
         if classify_het_kernel_func is not None:
-            kernel_instance_tuple[-1].append(classify_het_kernel_func(pretty_name))
+            kernel_instance_tuple[-1].append(
+                classify_het_kernel_func(pretty_name)
+            )
         kernel_instances.append(kernel_instance_tuple)
 
     results_csv: list[list[str]] = [
@@ -275,8 +295,8 @@ def extract_kernels_grid_configs(
     """Extract the following columns from cuda_gpu_trace report
     GrdX,GrdY,GrdZ,BlkX,BlkY,BlkZ,Reg/Trd,StcSMem (MB),DymSMem (MB),Strm,Name
     """
-    # We use load_nsys_report rather for simplicity. If we need information from the file, we should use the per-file logic in load_from_nsys_reports_folders instead
-    kern_traces: list[list[str]] = load_nsys_report(
+    # We use extract_csv_from_nsys_file rather for simplicity. If we need information from the file, we should use the per-file logic in extract_csv_from_nsys_folder instead
+    kern_traces: list[list[str]] = extract_csv_from_nsys_file(
         nsys_filepath, "cuda_gpu_trace", None
     )
     header = kern_traces[0]

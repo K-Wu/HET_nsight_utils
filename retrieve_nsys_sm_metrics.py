@@ -6,7 +6,7 @@ rawTimestamp is in nanoseconds
 from .load_nsight_report import (
     get_nsys_recipe_package_path,
     get_nsysstats_package_path,
-    extract_sqlite_from_nsys_report,
+    export_sqlite_from_nsys,
 )
 import sys
 
@@ -92,11 +92,11 @@ FROM
 def load_raw_gpu_metric_util_report(
     nsys_filename: str, row_limit: int = -1
 ) -> "pandas.DataFrame":
-    """Load the raw gpu metric util report from the nsys report file. row_limit is by default -1, meaning loading all rows. .sqlite is needed in the middle and is produced by extract_sqlite_from_nsys_report"""
+    """Load the raw gpu metric util report from the nsys report file. row_limit is by default -1, meaning loading all rows. .sqlite is needed in the middle and is produced by export_sqlite_from_nsys"""
     parsed_args = argparse.Namespace(
         rows=row_limit,
     )
-    extract_sqlite_from_nsys_report(nsys_filename)
+    export_sqlite_from_nsys(nsys_filename)
     assert nsys_filename.endswith(".nsys-rep")
     db_filename = nsys_filename[: nsys_filename.rfind(".nsys-rep")] + ".sqlite"
     return helpers.stats_cls_to_df(
