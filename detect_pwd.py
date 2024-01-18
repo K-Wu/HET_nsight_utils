@@ -5,6 +5,7 @@ import os
 from functools import lru_cache
 from .run_once import run_once
 import datetime
+import git
 
 
 @lru_cache(maxsize=None)
@@ -47,15 +48,38 @@ def get_spreadsheet_url() -> str:
             return line.split()[1]
     raise OSError("Failed to find SPREADSHEET_URL in `gh variable list`.")
 
-
-def get_git_root_path() -> str:
+def get_git_root_path(path: str = os.getcwd()) -> str:
     """Get the root path of the git repository."""
-    assert_git_exists()
-    return os.path.normpath(
-        subprocess.check_output(["git", "rev-parse", "--show-toplevel"])
-        .decode("utf-8")
-        .strip()
-    )
+    git_repo = git.Repo(path, search_parent_directories=True)
+    git_root = git_repo.git.rev_parse("--show-toplevel")
+    return git_root
+
+def get_git_root_path_recursively(path:str = os.getcwd()) -> str:
+    """Get the git root path by recursively searching parent directories until the repo root is no longer a submodule."""
+    current_path = path
+    while True:
+        git_repo = git.Repo(current_path, search_parent_directories=True)
+        git_root = get_git_root_path(current_path)
+        if (
+            len(git_repo.git.rev_parse("--show-superproject-working-tree"))
+            == 0
+        ):
+            return os.path.normpath(git_root)
+        else:
+            current_path = os.path.dirname(git_root)
+
+@lru_cache(maxsize=None)
+def get_spreadsheet_url_recursively() -> str:
+    try:
+        return get_spreadsheet_url()
+    except OSError:
+        # Go to git root path recursively and try again
+        cwd = os.getcwd()
+        git_root_path = get_git_root_path_recursively(cwd)
+        os.chdir(git_root_path)
+        url = get_spreadsheet_url()
+        os.chdir(cwd)
+        return url
 
 
 def get_env_name_from_setup(het_root_path: str) -> str:
