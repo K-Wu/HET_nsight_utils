@@ -48,13 +48,15 @@ def get_spreadsheet_url() -> str:
             return line.split()[1]
     raise OSError("Failed to find SPREADSHEET_URL in `gh variable list`.")
 
+
 def get_git_root_path(path: str = os.getcwd()) -> str:
     """Get the root path of the git repository."""
     git_repo = git.Repo(path, search_parent_directories=True)
     git_root = git_repo.git.rev_parse("--show-toplevel")
     return git_root
 
-def get_git_root_path_recursively(path:str = os.getcwd()) -> str:
+
+def get_git_root_path_recursively(path: str = os.getcwd()) -> str:
     """Get the git root path by recursively searching parent directories until the repo root is no longer a submodule."""
     current_path = path
     while True:
@@ -67,6 +69,7 @@ def get_git_root_path_recursively(path:str = os.getcwd()) -> str:
             return os.path.normpath(git_root)
         else:
             current_path = os.path.dirname(git_root)
+
 
 @lru_cache(maxsize=None)
 def get_spreadsheet_url_recursively() -> str:
@@ -122,8 +125,12 @@ def is_generic_root_path(path: str, repo_title: str) -> bool:
         # File not found error during cat cannot be catched. So we use os.path.exists to check first
         if not os.path.exists(os.path.join(path, "README.md")):
             return False
-        res = subprocess.check_output(["cat", os.path.join(path, "README.md")])
-        res = res.decode("utf-8")
+        # Superceded by file read to be compatible with Windows
+        # res = subprocess.check_output(["cat", os.path.join(path, "README.md")])
+        # res = res.decode("utf-8")
+        # Read the content in utf8
+        with open(os.path.join(path, "README.md"), "r", encoding="utf8") as f:
+            res = f.read()
         if "# " + repo_title in res:
             return True
         elif "## What's in a name?" in res:
