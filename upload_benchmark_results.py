@@ -245,7 +245,8 @@ def ask_subdirectory_or_file(
     """
     Show latest directory and request user input
     If user input is empty then choose the latest directory
-    otherwise, choose the user input
+    otherwise, choose the user input.
+    results_dir is the absolute path to the directory of results (regardin repository root). It takes effect only when an absolute path (regarding repository root) is specified with the beginning '///'.
     """
     assert not (file_only and dir_only)
     candidate = find_latest_subdirectory_or_file(
