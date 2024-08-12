@@ -278,9 +278,11 @@ def ask_subdirectory_or_file(
     else:
         if user_input.startswith(
             "///"
-        ):  # user input is a relative path to het root
+        ):  # user input is a relative path to the repository root
             assert user_input[3:].startswith(results_dir)
+            # Extract the user specified folder name
             user_input = os.path.relpath(user_input[3:], results_dir)
+        # Prepend the user specified folder name with the path to the result directory
         result = os.path.join(dirname, user_input)
     assert os.path.exists(result), f"{result} does not exist"
     return result
